@@ -134,6 +134,7 @@ pre code { background: none; border: none; padding: 0; color: var(--code-text); 
 .hero-sub {
   max-width: 720px; margin: 22px auto 0;
   color: var(--text-dim); font-size: 1.08rem;
+  overflow-wrap: anywhere;
 }
 .hero-sub strong { color: var(--text); }
 .hero-actions { margin-top: 32px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
@@ -197,7 +198,9 @@ pre code { background: none; border: none; padding: 0; color: var(--code-text); 
 .section-title { font-size: clamp(1.7rem, 3.4vw, 2.4rem); font-weight: 800; letter-spacing: -0.5px; line-height: 1.3; color: var(--text); }
 .section-desc { color: var(--text-dim); margin-top: 14px; }
 
-.feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+.feature-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+/* 网格子项允许收缩：避免长代码行（pre 不换行）把列撑破容器 */
+.feature-grid > *, .pf-grid > *, .tutorial-grid > *, .compare-grid > * { min-width: 0; }
 .card {
   background: var(--bg-alt);
   border: 1px solid var(--border);
@@ -217,7 +220,7 @@ pre code { background: none; border: none; padding: 0; color: var(--code-text); 
   font-size: 1.3rem; margin-bottom: 16px;
 }
 .card h3 { font-size: 1.12rem; margin-bottom: 9px; font-weight: 700; color: var(--text); }
-.card p { color: var(--text-dim); font-size: 0.92rem; }
+.card p { color: var(--text-dim); font-size: 0.92rem; overflow-wrap: anywhere; }
 
 .badge-cloud { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 1000px; margin: 0 auto; }
 .badge {
@@ -235,13 +238,13 @@ pre code { background: none; border: none; padding: 0; color: var(--code-text); 
 .proto-note h3, .transport-note h3 { margin-bottom: 8px; }
 
 .section-pf { position: relative; }
-.pf-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
+.pf-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
 .pf-card h3 { margin-bottom: 8px; }
 .pf-card pre { margin-top: 16px; }
 .pf-card-highlight { border-color: rgba(219, 97, 162, 0.4); background: linear-gradient(180deg, rgba(219, 97, 162, 0.06), var(--bg-alt)); }
 .pf-card-highlight h3 { color: #f778ba; }
 
-.tutorial-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
+.tutorial-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
 .tutorial-step { position: relative; overflow: hidden; }
 .step-num {
   position: absolute; top: 22px; right: 26px;
@@ -250,7 +253,7 @@ pre code { background: none; border: none; padding: 0; color: var(--code-text); 
 }
 .tutorial-step h3 { margin-bottom: 12px; }
 
-.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; max-width: 920px; margin: 0 auto; }
+.compare-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; max-width: 920px; margin: 0 auto; }
 .compare-card h3 { margin-bottom: 18px; font-size: 1.2rem; }
 .compare-card ul { list-style: none; }
 .compare-card li { padding: 9px 0; color: var(--text-dim); font-size: 0.95rem; border-bottom: 1px dashed var(--border); }
@@ -296,7 +299,7 @@ pre code { background: none; border: none; padding: 0; color: var(--code-text); 
   color: var(--text);
 }
 .doc h3 { font-size: 1.1rem; font-weight: 700; margin: 28px 0 6px; color: var(--text); }
-.doc p { color: var(--text-dim); margin: 10px 0; }
+.doc p { color: var(--text-dim); margin: 10px 0; overflow-wrap: anywhere; }
 .doc ol { padding-left: 22px; color: var(--text-dim); }
 .doc li { margin: 6px 0; }
 .doc .hint {
@@ -306,7 +309,8 @@ pre code { background: none; border: none; padding: 0; color: var(--code-text); 
   color: var(--text-dim); font-size: 0.92rem; margin: 16px 0;
 }
 .doc .cmd-group { margin: 16px 0; }
-.doc table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+/* 表格始终支持横向滚动：内容（长命令 code）超宽时在内部滚动，不撑破文档布局 */
+.doc table { display: block; overflow-x: auto; max-width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
 .doc th, .doc td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); }
 .doc th { color: var(--text); font-weight: 600; background: var(--bg-soft); }
 .doc td { color: var(--text-dim); }
@@ -340,12 +344,9 @@ pre code { background: none; border: none; padding: 0; color: var(--code-text); 
   .nav-inner { padding: 0 16px; }
 }
 @media (max-width: 1000px) {
-  .feature-grid, .tutorial-grid, .pf-grid, .compare-grid { grid-template-columns: 1fr 1fr; }
+  .feature-grid, .tutorial-grid, .pf-grid, .compare-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tutorial-layout { grid-template-columns: 1fr; }
   .toc { position: static; max-height: none; border-right: none; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 8px; }
-  /* 文档区表格 / 代码块窄屏可横向滚动，避免撑破布局 */
-  .doc table { display: block; overflow-x: auto; white-space: nowrap; }
-  .doc pre { overflow-x: auto; }
 }
 @media (max-width: 760px) {
   .nav-links { display: none; position: absolute; top: 64px; left: 0; right: 0; background: var(--bg); border-bottom: 1px solid var(--border); flex-direction: column; padding: 16px 24px; gap: 14px; }
@@ -355,7 +356,7 @@ pre code { background: none; border: none; padding: 0; color: var(--code-text); 
   .hero-stats { grid-template-columns: repeat(2, 1fr); }
   .stat { border-right: none; border-bottom: 1px solid var(--border); }
   .stat:nth-child(5) { grid-column: span 2; }
-  .feature-grid, .tutorial-grid, .pf-grid, .compare-grid { grid-template-columns: 1fr; }
+  .feature-grid, .tutorial-grid, .pf-grid, .compare-grid { grid-template-columns: minmax(0, 1fr); }
   .section { padding: 60px 0; }
   .doc h1 { font-size: 1.65rem; }
   .doc { padding: 0 4px; }
