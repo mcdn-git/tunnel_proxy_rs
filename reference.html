@@ -144,7 +144,8 @@
       <tr><td><code>--interface</code></td><td>—</td><td>公网端口绑定网卡</td></tr>
       <tr><td><code>--bandwidth-limit</code></td><td>—</td><td>每连接带宽上限</td></tr>
       <tr><td><code>--web-server/--web-user/--web-pass</code></td><td>—</td><td>Dashboard + Prometheus</td></tr>
-      <tr><td><code>--transport</code></td><td><code>tcp</code></td><td>tcp/kcp/quic/tls/mtls/ws/wss</td></tr>
+      <tr><td><code>--transport</code></td><td><code>tcp</code></td><td>tcp/kcp/quic/tls/mtls/ws/wss/relay</td></tr>
+      <tr><td><code>--relay-addr/--relay-id</code></td><td>—</td><td>中继地址与本 server 注册 ID（relay 传输必填，DP02）</td></tr>
       <tr><td><code>--tls-cert/--tls-key/--tls-client-ca</code></td><td>—</td><td>TLS 服务端证书/mTLS CA</td></tr>
       <tr><td><code>--oidc-secret/--oidc-issuer/--oidc-audience</code></td><td>—</td><td>OIDC 认证</td></tr>
       <tr><td><code>--tcpmux</code></td><td>—</td><td>TCPMUX 单端口</td></tr>
@@ -171,7 +172,8 @@
       <tr><td><code>--udp</code></td><td>UDP 穿透</td></tr>
       <tr><td><code>--domain</code></td><td>vhost 域名注册</td></tr>
       <tr><td><code>--group</code></td><td>负载均衡组</td></tr>
-      <tr><td><code>--transport</code></td><td>传输承载（须与 server 一致）</td></tr>
+      <tr><td><code>--transport</code></td><td>传输承载（tcp/kcp/quic/tls/mtls/ws/wss/relay，须与 server 一致）</td></tr>
+      <tr><td><code>--relay-addr/--relay-id</code></td><td>中继地址与目标 server 注册 ID（relay 传输必填，DP02）</td></tr>
       <tr><td><code>--tls-cert/--tls-key/--tls-ca/--tls-insecure</code></td><td>TLS 客户端参数</td></tr>
       <tr><td><code>--oidc-token</code></td><td>OIDC access token</td></tr>
       <tr><td><code>--tcpmux-target</code></td><td>TCPMUX CONNECT 目标</td></tr>
@@ -183,6 +185,10 @@
       <tr><td><code>--xtcp-server/--xtcp-secret/--target</code></td><td>XTCP 服务端（自动 UDP 打洞，KCP 加密数据面）</td></tr>
       <tr><td><code>--xtcp-punch</code></td><td>XTCP 服务端 TCP 直连兼容地址（可选）</td></tr>
       <tr><td><code>--stun-server</code></td><td>XTCP UDP 打洞 STUN 服务器（可重复；默认公共 STUN）</td></tr>
+      <tr><td><code>pfrelay -l :7001 [-k key]</code></td><td>加密中继中枢（DERP-like，按 ID 转发加密包，DP02）</td></tr>
+      <tr><td><code>token-gen / token-parse / token-resolve</code></td><td>连接令牌生成/解析/校验（DP03）</td></tr>
+      <tr><td><code>tc --token &lt;tok&gt; --target &lt;addr&gt;</code></td><td>令牌一键建隧道（自动带密码与地址）</td></tr>
+      <tr><td><code>p2p-ping --server ... --xtcp-server ...</code></td><td>XTCP 路径探测（udp-holepunch/tcp-direct/relay-fallback + RTT，DP04）</td></tr>
       <tr><td><code>--server-b</code></td><td>HA 备 server</td></tr>
       <tr><td><code>--virtual-ip</code></td><td>虚拟网络 IP</td></tr>
       <tr><td><code>--proto</code></td><td>协议模式（socks5/http/ss/.../file）</td></tr>

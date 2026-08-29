@@ -193,6 +193,21 @@ tunnel_proxy pfclient --server server:7000 --password mykey --stcp-server svc1 \
 # 然后 ssh -p 9000 user@127.0.0.1</code></pre>
     <div class="hint">公网完全不暴露端口，只有持密钥的访问端能连。→ 详见 <a class="inline" href="#pf">8. 反向穿透 pf</a></div>
 
+    <h3 id="scenario-relay">场景 K · 中继寻址 + 令牌一键建隧道（DP02/DP03）</h3>
+    <p>pfserver 也在 NAT 后、client 无法直连时，双方经加密中继按 ID 寻址互连；连接令牌把密码与地址打包，一条命令建隧道：</p>
+<pre><code># ① 中继（DERP-like，按 ID 转发加密包）
+tunnel_proxy pfrelay -l 0.0.0.0:7001
+# ② pfserver（在 NAT 后）主动连中继注册
+tunnel_proxy pfserver --transport relay --relay-addr relay:7001 --relay-id srv1 \
+  --password mykey --pool 7001-7010
+# ③ 生成连接令牌（密码须与 pfserver --password 一致）
+tunnel_proxy token-gen --password mykey --relay relay:7001 --relay-id srv1
+# ④ 任一台机器拿令牌一键建隧道
+tunnel_proxy tc --token tp... --target 127.0.0.1:80
+# 公网用户访问 http://server:&lt;分配端口&gt; 即到达内网 80</code></pre>
+    <div class="hint">中继只转发 pf 已加密的字节流（SS2 + mux），<b>中继不可解密</b>；公共/自建中继均可。
+    对称 NAT/CGNAT 下 XTCP 打洞失败也会自动回退经中继。→ 详见 <a class="inline" href="#pf">8. 反向穿透 pf</a></div>
+
     <!-- ========== 1 安装 ========== -->
     <h2 id="install">1. 安装与构建</h2>
     <h3 id="install-env">环境要求</h3>
