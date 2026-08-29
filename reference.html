@@ -179,8 +179,10 @@
       <tr><td><code>--sniffing</code></td><td>嗅探首包 HTTP Host / TLS SNI</td></tr>
       <tr><td><code>--stcp-server/--stcp-secret/--stcp-listen</code></td><td>STCP visitor（本地监听）</td></tr>
       <tr><td><code>--stcp-server/--stcp-secret/--target</code></td><td>STCP 服务端（不占公网端口）</td></tr>
-      <tr><td><code>--xtcp-server/--xtcp-secret/--xtcp-listen</code></td><td>XTCP visitor（P2P + fallback）</td></tr>
-      <tr><td><code>--xtcp-punch</code></td><td>XTCP 服务端打洞地址</td></tr>
+      <tr><td><code>--xtcp-server/--xtcp-secret/--xtcp-listen</code></td><td>XTCP visitor（UDP 打洞 + fallback）</td></tr>
+      <tr><td><code>--xtcp-server/--xtcp-secret/--target</code></td><td>XTCP 服务端（自动 UDP 打洞，KCP 加密数据面）</td></tr>
+      <tr><td><code>--xtcp-punch</code></td><td>XTCP 服务端 TCP 直连兼容地址（可选）</td></tr>
+      <tr><td><code>--stun-server</code></td><td>XTCP UDP 打洞 STUN 服务器（可重复；默认公共 STUN）</td></tr>
       <tr><td><code>--server-b</code></td><td>HA 备 server</td></tr>
       <tr><td><code>--virtual-ip</code></td><td>虚拟网络 IP</td></tr>
       <tr><td><code>--proto</code></td><td>协议模式（socks5/http/ss/.../file）</td></tr>

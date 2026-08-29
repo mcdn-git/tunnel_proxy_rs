@@ -171,13 +171,16 @@ tunnel_proxy pfclient --server server:7000 --password mykey --mode client --port
 
     <h3 id="scenario-p2p">场景 I · P2P 直连（XTCP，不经服务器转发）</h3>
     <p>两台都有 NAT 的内网机器直连互访，服务器只做牵线：</p>
-<pre><code># 目标端（内网）：注册 XTCP 服务 + 打洞地址
+<pre><code># 目标端（内网）：注册 XTCP 服务，自动启动 UDP 打洞（KCP 加密数据面）
 tunnel_proxy pfclient --server server:7000 --password mykey --xtcp-server xt1 \
-  --xtcp-secret key1 --xtcp-punch 127.0.0.1:9200 --target 127.0.0.1:80
-# 访问端（内网）：本地监听 9000，直连失败自动回退中转
+  --xtcp-secret key1 --target 127.0.0.1:80
+# （可选）指定 STUN 服务器：--stun-server stun.xxx.com:3478
+# 访问端（内网）：本地监听 9000，UDP 打洞失败自动回退中转
 tunnel_proxy pfclient --server server:7000 --password mykey --xtcp-server xt1 \
   --xtcp-secret key1 --xtcp-listen 127.0.0.1:9000</code></pre>
-    <div class="hint">真实 NAT 环境下打洞地址需预测（frp 标准做法）；同机 127.0.0.1 已验证直连+回退两路径。→ 详见 <a class="inline" href="#pf">8. 反向穿透 pf</a></div>
+    <div class="hint">打洞流程：目标端候选地址（local + STUN 公网映射）经 frps 交换 → 访问端
+    UDP 打洞 → KCP 可靠流 + AES-256-GCM 加密数据面。全锥形/受限锥形 NAT 可穿透；
+    <b>对称 NAT / CGNAT 无法穿透时自动回退中继</b>。→ 详见 <a class="inline" href="#pf">8. 反向穿透 pf</a></div>
 
     <h3 id="scenario-stcp">场景 J · 不暴露公网端口的点对点访问（STCP）</h3>
     <p>远程访问家里电脑的 SSH/数据库，但不想把端口暴露到公网：</p>
