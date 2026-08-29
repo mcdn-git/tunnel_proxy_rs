@@ -96,7 +96,7 @@
       <div class="card feature-card">
         <div class="card-icon">🚇</div>
         <h3>20 种传输通道</h3>
-        <p>TCP / TLS / WS / H2 / gRPC / QUIC / KCP（含 FEC 纠错）/ DTLS / SSH / obfs4 / ohttp·otls / pht / ftcp / icmp / WebTransport / utls 指纹 / WireGuard 真实实现等。</p>
+        <p>TCP / TLS / WS / H2 / gRPC / QUIC / KCP（含 FEC 纠错）/ DTLS / SSH / obfs4 / ohttp·otls / pht / ftcp / icmp / WebTransport / utls 指纹 / WireGuard 等。</p>
       </div>
       <div class="card feature-card">
         <div class="card-icon">🧭</div>
@@ -183,7 +183,7 @@
       <span class="badge">ICMP<span class="badge-sub">QUIC-over-ICMP</span></span>
       <span class="badge">WebTransport</span>
       <span class="badge">utls<span class="badge-sub">指纹伪装</span></span>
-      <span class="badge badge-hot">WireGuard<span class="badge-sub">boringtun 真实实现</span></span>
+      <span class="badge badge-hot">WireGuard<span class="badge-sub">boringtun</span></span>
       <span class="badge">mux<span class="badge-sub">mtcp/mtls/mws/mwss</span></span>
     </div>
     <div class="transport-note card">
@@ -250,9 +250,9 @@ tunnel_proxy pfclient --server server:7000 --password mykey \
 <section class="section section-alt" id="tutorial">
   <div class="container">
     <div class="section-head">
-      <p class="eyebrow">真实使用教程</p>
+      <p class="eyebrow">使用教程</p>
       <h2 class="section-title">从零到内网穿透，四步上手</h2>
-      <p class="section-desc">以下命令全部真实可运行。十八种协议、二十种传输、端口转发与反向穿透全场景的完整手册见：</p>
+      <p class="section-desc">十八种协议、二十种传输、端口转发与反向穿透全场景的完整手册见：</p>
       <div style="margin-top: 22px;">
         <a class="btn btn-primary" href="tutorial.html">打开完整教程</a>
       </div>
@@ -323,7 +323,7 @@ tunnel_proxy pfclient --server server:7000 --password mykey --target 127.0.0.1:8
         <ul>
           <li><span class="ok">✔</span> 协议 / 传输 / 组件主体能力覆盖</li>
           <li><span class="ok">✔</span> SSR 全协议 × 混淆组合（含 auth_sha1_v4）</li>
-          <li><span class="ok">✔</span> WireGuard 真实实现（boringtun）</li>
+          <li><span class="ok">✔</span> WireGuard（boringtun）</li>
           <li><span class="plus">＋</span> 反向穿透 pf（内网穿透）</li>
           <li><span class="plus">＋</span> 单进程多服务共享 Router</li>
           <li><span class="plus">＋</span> splice 零拷贝（Linux）</li>

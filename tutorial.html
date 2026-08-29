@@ -86,7 +86,7 @@
 
   <article class="doc">
     <h1>tunnel_proxy_rs 使用教程</h1>
-    <p class="doc-sub">完整、齐全、真实——所有命令均与 CLI 实现一一核对，可直接复制运行。想快速上手？先看「0. 场景速查」，按你的需求复制命令即可。</p>
+    <p class="doc-sub">所有命令与 CLI 实现一致，可直接复制运行。想快速上手？先看「0. 场景速查」，按你的需求复制命令即可。</p>
 
     <!-- ========== 0 场景速查 ========== -->
     <h2 id="scenarios">0. 场景速查（先看这里）</h2>
@@ -654,7 +654,7 @@ tunnel_proxy bench tput -s 127.0.0.1:1080 -e 127.0.0.1:9000 -d 5
 
     <!-- ========== 10 WG ========== -->
     <h2 id="wg">10. WireGuard</h2>
-    <p>boringtun 真实实现的 WireGuard（标准 Noise IK 握手 + chacha20poly1305 数据面 + 计数器）。密钥为 WireGuard 标准 base64 格式。</p>
+    <p>基于 boringtun 的 WireGuard 实现（标准 Noise IK 握手 + chacha20poly1305 数据面 + 计数器）。密钥为 WireGuard 标准 base64 格式。</p>
     <pre><code># 1. 生成密钥对
 tunnel_proxy wg-keygen
 #    PrivateKey: xxx    PublicKey: yyy
