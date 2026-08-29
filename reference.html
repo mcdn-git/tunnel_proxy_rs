@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>组件参考手册 — tunnel_proxy_rs</title>
+<meta name="description" content="tunnel_proxy_rs 全子命令参数索引：按 Listeners（监听入口）/ Handlers（协议）/ Dialers（出口）/ Connectors（传输）分组，含 pf 反向穿透全部参数。">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-logo">▣</span>
+      <span class="brand-name">tunnel_proxy_rs</span>
+    </a>
+    <nav class="nav-links">
+      <a href="index.html#features">特性</a>
+      <a href="index.html#pf">反向穿透</a>
+      <a href="tutorial.html">教程</a>
+      <a href="reference.html">参考</a>
+      <a href="concepts.html">概念</a>
+      <a href="faq.html">FAQ</a>
+      <a class="nav-cta" href="install.html">安装</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" aria-label="菜单">☰</button>
+  </div>
+</header>
+
+<div class="tutorial-layout">
+  <aside class="toc" id="toc">
+    <p class="toc-title">目录</p>
+    <a class="toc-grp" href="#listeners">1. Listeners（监听入口）</a>
+    <a class="toc-grp" href="#handlers">2. Handlers（协议处理）</a>
+    <a class="toc-grp" href="#dialers">3. Dialers（客户端/出口）</a>
+    <a class="toc-grp" href="#connectors">4. Connectors（传输承载）</a>
+    <a class="toc-grp" href="#pf">5. 反向穿透 pf 全参数</a>
+    <a class="toc-sub" href="#pf-server">pfserver</a>
+    <a class="toc-sub" href="#pf-client">pfclient</a>
+    <a class="toc-grp" href="#tooling">6. 工具与服务</a>
+    <a class="toc-grp" href="#router-cfg">7. Router 编排配置</a>
+    <a class="toc-grp" href="#api">8. API 与指标</a>
+  </aside>
+
+  <article class="doc">
+    <h1>组件参考手册</h1>
+    <p class="doc-sub">按「监听入口 / 协议处理 / 出口 / 传输」分组索引全部子命令与参数。所有命令均与 <code>tunnel_proxy --help</code> 核对。</p>
+
+    <h2 id="listeners">1. Listeners（监听入口）</h2>
+    <p>这些子命令启动一个监听服务，作为流量入口：</p>
+    <table>
+      <tr><th>子命令</th><th>功能</th><th>关键参数</th></tr>
+      <tr><td><code>socks5</code></td><td>SOCKS5 代理</td><td><code>-l</code> <code>-u/--user</code> <code>-p/--pass</code> <code>-a/--users</code></td></tr>
+      <tr><td><code>socks4</code></td><td>SOCKS4 / SOCKS4a 代理</td><td><code>-l</code></td></tr>
+      <tr><td><code>auto</code></td><td>HTTP / SOCKS4 / SOCKS5 自动协商</td><td><code>-l</code> <code>-u</code> <code>-p</code></td></tr>
+      <tr><td><code>http</code></td><td>HTTP 代理</td><td><code>-l</code> <code>-u user:pass</code> <code>-a</code></td></tr>
+      <tr><td><code>http2</code></td><td>HTTP/2 代理（h2 CONNECT）</td><td><code>-l</code> <code>-a</code></td></tr>
+      <tr><td><code>https</code></td><td>HTTP/2 over TLS（自签证书）</td><td><code>-l</code> <code>--cert/--key</code> <code>--http1</code></td></tr>
+      <tr><td><code>ss</code></td><td>Shadowsocks</td><td><code>-l</code> <code>-m/--method</code> <code>--password</code></td></tr>
+      <tr><td><code>ss2</code></td><td>Shadowsocks 2022</td><td><code>-l</code> <code>-m</code> <code>--password</code></td></tr>
+      <tr><td><code>ssr</code></td><td>ShadowsocksR</td><td><code>-l</code> <code>-m</code> <code>--password</code> <code>-o/--obfs</code> <code>--obfs-host</code> <code>-p/--protocol</code></td></tr>
+      <tr><td><code>trojan</code></td><td>Trojan</td><td><code>-l</code> <code>--password</code> <code>--cert/--key</code></td></tr>
+      <tr><td><code>vmess</code></td><td>Vmess</td><td><code>-l</code> <code>--uuid</code></td></tr>
+      <tr><td><code>vless</code></td><td>Vless</td><td><code>-l</code> <code>--uuid</code></td></tr>
+      <tr><td><code>sni</code></td><td>SNI 路由（域名→后端）</td><td><code>-l</code> <code>-f/--file routes.yaml</code></td></tr>
+      <tr><td><code>file</code></td><td>HTTP 静态文件服务</td><td><code>-l</code> <code>-d/--dir</code></td></tr>
+      <tr><td><code>relay</code></td><td>自定义加密中继</td><td><code>-l</code> <code>-u</code> <code>-p</code></td></tr>
+      <tr><td><code>h3socks</code></td><td>HTTP/3 SOCKS 入口</td><td><code>-l</code></td></tr>
+      <tr><td><code>wtsocks</code></td><td>WebTransport SOCKS 入口</td><td><code>-l</code></td></tr>
+      <tr><td><code>chain</code></td><td>链式代理入口</td><td><code>-l</code> <code>-f/--file</code></td></tr>
+      <tr><td><code>run</code></td><td>Router 编排（多服务 + 分流）</td><td><code>-l</code> <code>-C/--config</code> <code>--api</code> <code>--reload</code> <code>--netns</code></td></tr>
+    </table>
+
+    <h2 id="handlers">2. Handlers（协议处理）</h2>
+    <p>协议解析与目标连接在入口侧完成的处理单元（与 gost Handler 一致）：</p>
+    <table>
+      <tr><th>Handler</th><th>说明</th></tr>
+      <tr><td><code>Socks5Handler</code></td><td>SOCKS5 认证 + CONNECT/UDP 关联</td></tr>
+      <tr><td><code>AutoHandler</code></td><td>自动识别 HTTP/SOCKS4/SOCKS5</td></tr>
+      <tr><td><code>HttpHandler</code></td><td>HTTP CONNECT + 绝对 URI GET</td></tr>
+      <tr><td><code>SsHandler</code></td><td>SS 加密流</td></tr>
+      <tr><td><code>SsrHandler</code></td><td>SSR 流密码 + 混淆 + 协议插件</td></tr>
+      <tr><td><code>TrojanHandler</code></td><td>TLS + Trojan 认证</td></tr>
+      <tr><td><code>VmessHandler</code></td><td>Vmess 认证 + 加密</td></tr>
+      <tr><td><code>SniHandler</code></td><td>TLS SNI 路由</td></tr>
+      <tr><td><code>FileHandler</code></td><td>静态文件</td></tr>
+      <tr><td><code>RelayHandler</code></td><td>relay 协议</td></tr>
+    </table>
+
+    <h2 id="dialers">3. Dialers（客户端/出口）</h2>
+    <p>用于本地验证或 stdio 中继的客户端子命令（连到对应 server）：</p>
+    <table>
+      <tr><th>子命令</th><th>连接目标</th><th>关键参数</th></tr>
+      <tr><td><code>ssclient</code></td><td>SS server</td><td><code>-s</code> <code>-m</code> <code>--password</code> <code>-t/--target</code></td></tr>
+      <tr><td><code>ss2client</code></td><td>SS2 server</td><td>同上</td></tr>
+      <tr><td><code>ssrclient</code></td><td>SSR server</td><td>同上 + 混淆/协议插件</td></tr>
+      <tr><td><code>trojanclient</code></td><td>Trojan server</td><td><code>-s</code> <code>--password</code> <code>-t</code></td></tr>
+      <tr><td><code>vmessclient</code></td><td>Vmess server</td><td><code>-s</code> <code>--uuid</code> <code>-t</code></td></tr>
+      <tr><td><code>vlessclient</code></td><td>Vless server</td><td>同上</td></tr>
+      <tr><td><code>relayclient</code></td><td>Relay server</td><td><code>-s</code> <code>-u</code> <code>-p</code> <code>-t</code> <code>--nodelay</code></td></tr>
+      <tr><td><code>rtcpclient</code></td><td>RTCP 加密转发</td><td><code>-s</code> <code>-k</code> <code>-t</code></td></tr>
+      <tr><td><code>runixclient</code></td><td>Runix（unix/named pipe）</td><td><code>-s</code> <code>-k</code> <code>-t</code></td></tr>
+      <tr><td><code>wgclient</code></td><td>WireGuard（stdio 中继）</td><td><code>-s</code> <code>-k</code> <code>-p</code></td></tr>
+      <tr><td><code>stdio</code></td><td>SSH ProxyCommand 中继</td><td><code>-t</code></td></tr>
+    </table>
+
+    <h2 id="connectors">4. Connectors（传输承载）</h2>
+    <p>传输层服务器/客户端子命令：</p>
+    <table>
+      <tr><th>子命令</th><th>传输</th><th>说明</th></tr>
+      <tr><td><code>kcp</code> / <code>kcpclient</code></td><td>KCP</td><td><code>-l</code> <code>-t</code> <code>--mtu</code> <code>--window</code> <code>--data-shards/--parity-shards</code> <code>--dead-link</code>（kcp 另 <code>--session-idle-timeout</code>）</td></tr>
+      <tr><td><code>dtls</code> / <code>dtlsclient</code></td><td>DTLS</td><td><code>-l</code> <code>-t</code></td></tr>
+      <tr><td><code>mtcp</code></td><td>Multiplex TCP</td><td>一条 TCP 承载多流</td></tr>
+      <tr><td><code>mux</code> / <code>muxclient</code></td><td>Mux</td><td>多路复用流</td></tr>
+      <tr><td><code>h2</code> / <code>h2client</code></td><td>HTTP/2 隧道</td><td>h2 明文隧道</td></tr>
+      <tr><td><code>h3</code> / <code>h3client</code></td><td>HTTP/3</td><td>QUIC</td></tr>
+      <tr><td><code>wt</code> / <code>wtclient</code></td><td>WebTransport</td><td>QUIC</td></tr>
+      <tr><td><code>mtls</code> / <code>mtlsclient</code></td><td>Multiplex TLS</td><td>TLS + mux</td></tr>
+      <tr><td><code>obfs</code> / <code>obfsclient</code></td><td>Obfuscation</td><td>HTTP/TLS 伪装</td></tr>
+      <tr><td><code>obfs4</code> / <code>obfs4client</code></td><td>obfs4</td><td>防探测混淆</td></tr>
+      <tr><td><code>ohttp</code> <code>otls</code> <code>pht</code> <code>ftcp</code></td><td>混淆传输</td><td>HTTP/TLS 伪装、Fake TCP</td></tr>
+      <tr><td><code>ws</code> / <code>wsc</code> / <code>wsecho</code></td><td>WebSocket</td><td>ws 隧道 + echo 验证</td></tr>
+      <tr><td><code>quic</code> / <code>quicclient</code></td><td>QUIC</td><td>UDP 可靠流</td></tr>
+      <tr><td><code>grpc</code> / <code>grpcclient</code></td><td>gRPC</td><td>gRPC 隧道</td></tr>
+      <tr><td><code>sshtunnel</code> / <code>sshd</code></td><td>SSH</td><td>SSH 隧道 / SSH 服务器</td></tr>
+      <tr><td><code>icmp</code></td><td>ICMP</td><td>ICMP 传输（三平台）</td></tr>
+      <tr><td><code>wg</code></td><td>WireGuard</td><td>服务器（-l -k -p -t）</td></tr>
+    </table>
+
+    <h2 id="pf">5. 反向穿透 pf 全参数</h2>
+    <h3 id="pf-server">pfserver</h3>
+    <table>
+      <tr><th>参数</th><th>默认</th><th>说明</th></tr>
+      <tr><td><code>--listen</code></td><td><code>0.0.0.0:7000</code></td><td>隧道监听地址</td></tr>
+      <tr><td><code>--password</code></td><td>必填</td><td>共享密钥</td></tr>
+      <tr><td><code>--pool</code></td><td>—</td><td>公网端口池 <code>from-to</code></td></tr>
+      <tr><td><code>--mode</code></td><td><code>random</code></td><td>random / fixed / client</td></tr>
+      <tr><td><code>--port</code></td><td>—</td><td>固定公网端口</td></tr>
+      <tr><td><code>--vhost-http/--vhost-https/--vhost-http3</code></td><td>—</td><td>虚拟主机共享端口</td></tr>
+      <tr><td><code>--vhost-subdomain</code></td><td>—</td><td>subdomain 基础域名</td></tr>
+      <tr><td><code>--proxy-protocol</code></td><td>—</td><td>v1 / v2 透传真实 IP</td></tr>
+      <tr><td><code>--max-ports-per-client</code></td><td>—</td><td>单 client 端口上限</td></tr>
+      <tr><td><code>--interface</code></td><td>—</td><td>公网端口绑定网卡</td></tr>
+      <tr><td><code>--bandwidth-limit</code></td><td>—</td><td>每连接带宽上限</td></tr>
+      <tr><td><code>--web-server/--web-user/--web-pass</code></td><td>—</td><td>Dashboard + Prometheus</td></tr>
+      <tr><td><code>--transport</code></td><td><code>tcp</code></td><td>tcp/kcp/quic/tls/mtls/ws/wss</td></tr>
+      <tr><td><code>--tls-cert/--tls-key/--tls-client-ca</code></td><td>—</td><td>TLS 服务端证书/mTLS CA</td></tr>
+      <tr><td><code>--oidc-secret/--oidc-issuer/--oidc-audience</code></td><td>—</td><td>OIDC 认证</td></tr>
+      <tr><td><code>--tcpmux</code></td><td>—</td><td>TCPMUX 单端口</td></tr>
+      <tr><td><code>--mark</code></td><td>—</td><td>socket 标记（Linux）</td></tr>
+      <tr><td><code>--ssh-gateway/--ssh-gateway-user/--ssh-gateway-pass</code></td><td>—</td><td>SSH 反向隧道网关</td></tr>
+      <tr><td><code>--http-plugin</code></td><td>—</td><td>注册事件 HTTP 回调</td></tr>
+      <tr><td><code>--virtual-net</code></td><td>关</td><td>虚拟网络注册表</td></tr>
+      <tr><td><code>--server-read-timeout</code></td><td><code>90</code></td><td>服务端控制流读超时（秒），client 静默掉线时回收死会话</td></tr>
+      <tr><td><code>--parse-timeout</code></td><td><code>15</code></td><td>vhost/tcpmux/SNI 头解析超时（秒），防慢速连接</td></tr>
+      <tr><td><code>--udp-response-timeout</code></td><td><code>5</code></td><td>UDP 响应等待超时（秒）</td></tr>
+      <tr><td><code>--mux-window</code></td><td><code>1024</code></td><td>mux 单流发送窗口（KiB），越大单流吞吐越高</td></tr>
+      <tr><td><code>--mux-max-streams</code></td><td><code>4096</code></td><td>mux 单会话最大并发流数</td></tr>
+      <tr><td><code>--mux-tx-capacity</code></td><td><code>32768</code></td><td>mux 数据写通道容量（帧数）</td></tr>
+    </table>
+
+    <h3 id="pf-client">pfclient</h3>
+    <table>
+      <tr><th>参数</th><th>说明</th></tr>
+      <tr><td><code>--server</code></td><td>服务器地址</td></tr>
+      <tr><td><code>--password</code></td><td>共享密钥</td></tr>
+      <tr><td><code>--mode</code></td><td>分配模式（须与 server 一致）</td></tr>
+      <tr><td><code>--port</code></td><td>指定公网端口（client 模式）</td></tr>
+      <tr><td><code>--target</code></td><td>透明转发目标（与 --proto/--config/--udp 互斥）</td></tr>
+      <tr><td><code>--udp</code></td><td>UDP 穿透</td></tr>
+      <tr><td><code>--domain</code></td><td>vhost 域名注册</td></tr>
+      <tr><td><code>--group</code></td><td>负载均衡组</td></tr>
+      <tr><td><code>--transport</code></td><td>传输承载（须与 server 一致）</td></tr>
+      <tr><td><code>--tls-cert/--tls-key/--tls-ca/--tls-insecure</code></td><td>TLS 客户端参数</td></tr>
+      <tr><td><code>--oidc-token</code></td><td>OIDC access token</td></tr>
+      <tr><td><code>--tcpmux-target</code></td><td>TCPMUX CONNECT 目标</td></tr>
+      <tr><td><code>--mark</code></td><td>socket 标记（Linux）</td></tr>
+      <tr><td><code>--sniffing</code></td><td>嗅探首包 HTTP Host / TLS SNI</td></tr>
+      <tr><td><code>--stcp-server/--stcp-secret/--stcp-listen</code></td><td>STCP visitor（本地监听）</td></tr>
+      <tr><td><code>--stcp-server/--stcp-secret/--target</code></td><td>STCP 服务端（不占公网端口）</td></tr>
+      <tr><td><code>--xtcp-server/--xtcp-secret/--xtcp-listen</code></td><td>XTCP visitor（P2P + fallback）</td></tr>
+      <tr><td><code>--xtcp-punch</code></td><td>XTCP 服务端打洞地址</td></tr>
+      <tr><td><code>--server-b</code></td><td>HA 备 server</td></tr>
+      <tr><td><code>--virtual-ip</code></td><td>虚拟网络 IP</td></tr>
+      <tr><td><code>--proto</code></td><td>协议模式（socks5/http/ss/.../file）</td></tr>
+      <tr><td><code>--config</code></td><td>Router 编排 YAML</td></tr>
+      <tr><td><code>--user/--users/--pass</code></td><td>认证</td></tr>
+      <tr><td><code>--health-check/--health-interval/--health-timeout/--health-max-failed/--health-url</code></td><td>健康检查</td></tr>
+      <tr><td><code>--ports</code></td><td>端口范围映射（remotePort）</td></tr>
+      <tr><td><code>--subdomain/--basic-auth/--host-rewrite/--path-prefix</code></td><td>vhost 增强</td></tr>
+      <tr><td><code>--heartbeat-interval</code></td><td>心跳间隔（秒，默认 30），NAT 保活频率</td></tr>
+      <tr><td><code>--heartbeat-timeout</code></td><td>心跳应答等待超时（秒，默认 5）</td></tr>
+      <tr><td><code>--client-session-timeout</code></td><td>建连+握手总超时（秒，默认 15）</td></tr>
+      <tr><td><code>--reg-response-timeout</code></td><td>注册响应等待超时（秒，默认 15）</td></tr>
+      <tr><td><code>--reconnect-backoff</code></td><td>重连退避初始秒数（默认 1，指数增长）</td></tr>
+      <tr><td><code>--reconnect-backoff-max</code></td><td>重连退避封顶秒数（默认 60）</td></tr>
+      <tr><td><code>--mux-window</code></td><td>mux 单流发送窗口（KiB，默认 1024）</td></tr>
+      <tr><td><code>--mux-max-streams</code></td><td>mux 单会话最大并发流数（默认 4096）</td></tr>
+      <tr><td><code>--mux-tx-capacity</code></td><td>mux 数据写通道容量（帧数，默认 32768）</td></tr>
+    </table>
+
+    <h2 id="tooling">6. 工具与服务</h2>
+    <table>
+      <tr><th>子命令</th><th>功能</th><th>关键参数</th></tr>
+      <tr><td><code>bench echo/ping/tput</code></td><td>性能测试</td><td><code>-l</code> <code>-s</code> <code>-e</code> <code>-d</code> <code>-T</code> <code>-c</code></td></tr>
+      <tr><td><code>forward</code></td><td>TCP/UDP 端口转发</td><td><code>-l</code> <code>-t</code> <code>-T tcp|udp</code> <code>-f</code></td></tr>
+      <tr><td><code>rtcp</code></td><td>加密 TCP 转发</td><td><code>-l</code> <code>-k</code></td></tr>
+      <tr><td><code>rudp</code></td><td>加密 UDP 转发</td><td><code>-l</code> <code>-k</code></td></tr>
+      <tr><td><code>ssu</code></td><td>SS UDP 转发</td><td><code>-l</code> <code>-m</code> <code>--password</code></td></tr>
+      <tr><td><code>runix</code></td><td>Unix socket / named pipe 加密承载</td><td><code>-l</code> <code>-k</code></td></tr>
+      <tr><td><code>redirect</code> / <code>redu</code></td><td>透明代理（Linux iptables / 其他平台 TUN）</td><td><code>-l</code> <code>-f</code></td></tr>
+      <tr><td><code>tap</code></td><td>TAP 虚拟网卡</td><td><code>--address</code> <code>-f</code></td></tr>
+      <tr><td><code>tun</code></td><td>TUN 透明代理</td><td><code>--address</code> <code>-f</code></td></tr>
+      <tr><td><code>tun2socks</code></td><td>TUN 流量全走 SOCKS</td><td><code>--address</code> <code>-x socks5://</code></td></tr>
+      <tr><td><code>dns</code></td><td>DNS 代理</td><td><code>-l</code></td></tr>
+      <tr><td><code>serial</code></td><td>串口三方向转发</td><td><code>--device</code> <code>--baud</code></td></tr>
+      <tr><td><code>wg-keygen</code></td><td>WireGuard 密钥生成</td><td>—</td></tr>
+      <tr><td><code>tunnel</code> / <code>unix</code></td><td>简易 TCP/Unix 隧道</td><td><code>-l</code> <code>-t</code></td></tr>
+    </table>
+
+    <h2 id="router-cfg">7. Router 编排配置</h2>
+<pre><code># run -C router.yaml
+chains:                # 候选代理链
+  - name: c1
+    nodes:
+      - name: hop1
+        proto: socks5
+        addr: 1.2.3.4:1080
+        user: u
+        pass: p
+    retry: 2
+strategy: RoundRobin   # RoundRobin / Random / Weighted / Hash
+bypass:                # 旁路直连
+  - 127.0.0.0/8
+  - "*.internal"
+reverse: false
+limit:                 # 限流
+  max_connections: 1000
+  token: 1000000
+  hourly_bytes: 50000000
+services:              # 单进程多服务
+  - name: socks
+    addr: 0.0.0.0:1080
+    proto: socks5
+webhook:               # observer 事件回调
+  url: http://127.0.0.1:9000/hook
+  events: [connect, close]
+  timeout_secs: 5</code></pre>
+
+    <h2 id="api">8. API 与指标</h2>
+    <p>RouterApiServer（<code>run --api 127.0.0.1:18085</code>）暴露：</p>
+    <table>
+      <tr><th>端点</th><th>方法</th><th>说明</th></tr>
+      <tr><td><code>/</code></td><td>GET</td><td>Web UI 控制台</td></tr>
+      <tr><td><code>/api/status</code></td><td>GET</td><td>服务/链/命中统计 JSON</td></tr>
+      <tr><td><code>/api/reload</code></td><td>POST</td><td>热重载配置</td></tr>
+      <tr><td><code>/api/services</code></td><td>GET/POST</td><td>动态服务列表 / 启动</td></tr>
+      <tr><td><code>/api/services/{name}</code></td><td>DELETE</td><td>停止动态服务</td></tr>
+      <tr><td><code>/metrics</code></td><td>GET</td><td>Prometheus 文本</td></tr>
+    </table>
+    <p>pfserver Dashboard（<code>--web-server</code>）暴露 <code>/</code>（HTML）、<code>/metrics</code>（<code>tunnel_proxy_pf_*</code>）、<code>/status</code>（JSON 含 ports/vhosts/vnets）。</p>
+
+  </article>
+</div>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div>
+      <p class="footer-brand">▣ tunnel_proxy_rs</p>
+      <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
+    </div>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 215 单元测试全绿</p>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>核心概念 — tunnel_proxy_rs</title>
+<meta name="description" content="tunnel_proxy_rs 核心概念：Service / Chain / Hop / Selector / Bypass / Limiter / Router / Handler / Transport / Node 术语详解与数据流。">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-logo">▣</span>
+      <span class="brand-name">tunnel_proxy_rs</span>
+    </a>
+    <nav class="nav-links">
+      <a href="index.html#features">特性</a>
+      <a href="index.html#pf">反向穿透</a>
+      <a href="tutorial.html">教程</a>
+      <a href="reference.html">参考</a>
+      <a href="concepts.html">概念</a>
+      <a href="faq.html">FAQ</a>
+      <a class="nav-cta" href="install.html">安装</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" aria-label="菜单">☰</button>
+  </div>
+</header>
+
+<div class="tutorial-layout">
+  <aside class="toc" id="toc">
+    <p class="toc-title">目录</p>
+    <a class="toc-grp" href="#arch">1. 三层架构</a>
+    <a class="toc-grp" href="#service">2. Service（服务）</a>
+    <a class="toc-grp" href="#handler">3. Handler（处理入口）</a>
+    <a class="toc-grp" href="#transport">4. Transport（传输层）</a>
+    <a class="toc-grp" href="#chain">5. Chain / Node / Hop</a>
+    <a class="toc-sub" href="#chain-node">Node 节点</a>
+    <a class="toc-sub" href="#chain-hop">Hop 分组</a>
+    <a class="toc-grp" href="#router">6. Router 编排</a>
+    <a class="toc-sub" href="#router-selector">Selector 选择器</a>
+    <a class="toc-sub" href="#router-bypass">Bypass 旁路</a>
+    <a class="toc-sub" href="#router-limiter">Limiter 限流</a>
+    <a class="toc-sub" href="#router-observer">Observer 观测</a>
+    <a class="toc-grp" href="#pf-concept">7. 反向穿透 pf</a>
+    <a class="toc-grp" href="#flow">8. 数据流全景</a>
+  </aside>
+
+  <article class="doc">
+    <h1>核心概念</h1>
+    <p class="doc-sub">理解这几个术语即可掌握全部能力：Service、Handler、Transport、Chain、Router。</p>
+
+    <h2 id="arch">1. 三层架构</h2>
+    <p>与 gost 一致的分层模型：</p>
+    <ol>
+      <li><b>入口（Listener/Handler）</b>：监听端口，识别协议（SOCKS5/HTTP/SS/...），得到目标地址。</li>
+      <li><b>路由（Router）</b>：准入控制 → 限流 → 按 Bypass/Selector 决定走哪条链。</li>
+      <li><b>出口（Chain/Dialer）</b>：沿链逐跳连接目标（每节点按协议/传输包装流）。</li>
+    </ol>
+
+    <h2 id="service">2. Service（服务）</h2>
+    <p>一个「监听地址 + 协议入口」的实例。CLI 子命令大多是单个服务（如 <code>socks5</code>、<code>ss</code>）；<code>run -C</code> 支持单进程多服务共享 Router：</p>
+<pre><code># router.yaml
+services:
+  - name: socks
+    addr: 0.0.0.0:1080
+    proto: socks5
+  - name: web
+    addr: 0.0.0.0:8080
+    proto: http
+    users: [admin:pass]
+  - name: ss1
+    addr: 0.0.0.0:8388
+    proto: ss
+    method: aes-256-gcm
+    password: secret</code></pre>
+
+    <h2 id="handler">3. Handler（处理入口）</h2>
+    <p>每个协议一个 Handler，负责解析请求、连接目标、双向转发。当前支持全部正向入口协议：</p>
+    <table>
+      <tr><th>协议</th><th>Handler</th><th>说明</th></tr>
+      <tr><td><code>socks5/socks4/auto</code></td><td>Socks5Handler 等</td><td>认证、UDP 关联</td></tr>
+      <tr><td><code>http/http2/https</code></td><td>HttpHandler</td><td>CONNECT + GET 代理</td></tr>
+      <tr><td><code>ss/ss2/ssr</code></td><td>SsHandler</td><td>加密流解析</td></tr>
+      <tr><td><code>trojan/vmess/vless</code></td><td>TrojanHandler 等</td><td>TLS 包裹 + 认证</td></tr>
+      <tr><td><code>sni</code></td><td>SniHandler</td><td>SNI 路由 YAML</td></tr>
+      <tr><td><code>file</code></td><td>FileHandler</td><td>HTTP 静态文件服务</td></tr>
+      <tr><td><code>relay</code></td><td>RelayHandler</td><td>自定义加密中继协议</td></tr>
+    </table>
+
+    <h2 id="transport">4. Transport（传输层）</h2>
+    <p>隧道内承载流量的底层协议，可叠加在链上：</p>
+    <table>
+      <tr><th>类型</th><th>值</th></tr>
+      <tr><td>可靠流</td><td><code>tcp</code> <code>kcp</code> <code>quic</code> <code>wt</code>（WebTransport）</td></tr>
+      <tr><td>TLS 类</td><td><code>tls</code> <code>mtls</code> <code>utls</code>（指纹伪装）</td></tr>
+      <tr><td>WebSocket</td><td><code>ws</code> <code>wss</code> <code>mws</code> <code>mwss</code></td></tr>
+      <tr><td>HTTP 类</td><td><code>http</code> <code>h2</code> <code>h3</code> <code>grpc</code></td></tr>
+      <tr><td>多路复用</td><td><code>mtcp</code> <code>mtls</code> <code>mux</code></td></tr>
+      <tr><td>混淆</td><td><code>ohttp</code> <code>otls</code> <code>pht</code> <code>obfs</code> <code>obfs4</code> <code>ftcp</code></td></tr>
+      <tr><td>其他</td><td><code>icmp</code> <code>ssh</code> <code>sshd</code> <code>wg</code> <code>dtls</code> <code>udp</code> <code>serial</code> <code>unix</code></td></tr>
+    </table>
+
+    <h2 id="chain">5. Chain / Node / Hop</h2>
+    <p>链是「有序节点列表」：流量逐跳经过每个节点，链尾节点连接目标。同层多个等价节点组成一个 Hop，建链时按策略选其一。</p>
+    <h3 id="chain-node">Node 节点</h3>
+    <table>
+      <tr><th>字段</th><th>说明</th></tr>
+      <tr><td><code>name</code></td><td>节点名</td></tr>
+      <tr><td><code>proto</code></td><td>载荷协议：http / socks5 / ss / ss2 / ssr / vmess / vless / trojan / relay / sni</td></tr>
+      <tr><td><code>transport</code></td><td>传输层（见上表）</td></tr>
+      <tr><td><code>addr</code></td><td><code>host:port</code></td></tr>
+      <tr><td><code>user/pass</code></td><td>认证</td></tr>
+      <tr><td><code>method/protocol</code></td><td>加密方式 / SSR 协议插件</td></tr>
+      <tr><td><code>tls_ca/tls_cert/tls_key/tls_servername</code></td><td>TLS 参数</td></tr>
+      <tr><td><code>wg_key/wg_peer_pub</code></td><td>WireGuard 密钥</td></tr>
+    </table>
+    <h3 id="chain-hop">Hop 分组</h3>
+    <p>chain.yaml 顶层 <code>hops</code>：每个 hop 是一组等价节点，建链时按选择策略挑一个。例：<code>hops: [[nodeA1, nodeA2], [nodeB]]</code> 表示第一跳从 A1/A2 选一，第二跳必须 B。</p>
+
+    <h2 id="router">6. Router 编排</h2>
+    <p>Router 是核心编排器：<code>Router::new(chains, bypass, selector)</code>。每个入口连接先过准入 → 限流 → 选链 → 转发。</p>
+    <h3 id="router-selector">Selector 选择器</h3>
+    <p>候选链选择策略：<code>RoundRobin</code>（轮询）/ <code>Random</code>（随机）/ <code>Weighted</code>（加权）/ <code>Hash</code>（按目标地址哈希）。</p>
+    <h3 id="router-bypass">Bypass 旁路</h3>
+    <p>目标地址匹配规则（白/黑名单）：IP/CIDR、域名、通配符；<code>reverse</code> 取反。命中旁路的目标直接直连、不走链。</p>
+    <h3 id="router-limiter">Limiter 限流</h3>
+    <p>连接级限流（总连接数/并发）、流量限额（按 token/hourly_bytes 的固定窗口）、用户级限流（多用户共享 Router 时按 key 隔离）。超限返回 429/拒绝。</p>
+    <h3 id="router-observer">Observer 观测</h3>
+    <p>路由事件（connect/close/route/error）记录指标，可经 Webhook POST 到外部，或由 RouterApiServer 暴露 <code>/metrics</code>（Prometheus）+ <code>/status</code>（JSON）+ Web UI。</p>
+
+    <h2 id="pf-concept">7. 反向穿透 pf</h2>
+    <p>pf（port-forward）是本项目提供的内网穿透能力：内网 client 主动连公网 server，把公网端口映射到内网服务。核心概念：</p>
+    <table>
+      <tr><th>术语</th><th>说明</th></tr>
+      <tr><td>隧道</td><td>client↔server 的加密长连接（SS2 + mux 复用，支持 7 种承载）</td></tr>
+      <tr><td>端口分配</td><td>random / fixed / client 三模式</td></tr>
+      <tr><td>数据流</td><td>每条公网连接 = 一条 mux 流，经隧道转发到内网</td></tr>
+      <tr><td>虚拟主机 vhost</td><td>多域名共享端口，按 Host/SNI/:authority 路由</td></tr>
+      <tr><td>负载均衡组</td><td>同组多 client 共享端口，RR 分发</td></tr>
+      <tr><td>STCP/XTCP</td><td>不暴露公网端口 / P2P 打洞直连</td></tr>
+      <tr><td>SSH Gateway</td><td>接受标准 <code>ssh -R</code> 反向隧道</td></tr>
+    </table>
+
+    <h2 id="flow">8. 数据流全景</h2>
+<pre><code>公网用户 ──TCP──▶ 入口端口
+                     │
+                     ▼
+              [Handler 协议解析]      socks5/http/ss/...
+                     │ 目标地址
+                     ▼
+              [Router 编排]  ──► Bypass 直连？──► 直接 TCP
+                     │ 选链（Selector）
+                     ▼
+              [Chain 链]  node1 ──▶ node2 ──▶ ... ──▶ 目标
+                     │ (每节点按 proto/transport 包装流)
+                     ▼
+              双向 copy_bidirectional（零拷贝 splice 优化）</code></pre>
+
+  </article>
+</div>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div>
+      <p class="footer-brand">▣ tunnel_proxy_rs</p>
+      <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
+    </div>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 215 单元测试全绿</p>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tunnel_proxy_rs — 全协议代理内核 · 内网穿透</title>
+<meta name="description" content="用 Rust 编写的高性能代理内核：100% 覆盖 gost v2/v3 协议、传输与编排，并原生实现 frp 级反向穿透（TCP/UDP/vhost 全家族/负载均衡/KCP·QUIC 承载）。单一二进制，三平台可用。">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕳️</text></svg>">
+</head>
+<body>
+
+<!-- ======= 导航 ======= -->
+<header class="nav" id="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#top">
+      <span class="brand-logo">▣</span>
+      <span class="brand-name">tunnel_proxy_rs</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#features">特性</a>
+      <a href="#protocols">协议</a>
+      <a href="#transports">传输</a>
+      <a href="#pf">反向穿透</a>
+      <a href="#tutorial">教程</a>
+      <a href="#compare">对比</a>
+      <a href="reference.html">参考</a>
+      <a href="concepts.html">概念</a>
+      <a href="faq.html">FAQ</a>
+      <a class="nav-cta" href="install.html">安装</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" aria-label="菜单">☰</button>
+  </div>
+</header>
+
+<!-- ======= Hero ======= -->
+<section class="hero" id="top">
+  <div class="hero-glow"></div>
+  <div class="container hero-inner">
+    <p class="hero-eyebrow">Rust · 单二进制 · 三平台</p>
+    <h1 class="hero-title">
+      一个二进制，<br>
+      <span class="gradient-text">全协议代理内核，<br>内网穿透</span>
+    </h1>
+    <p class="hero-sub">
+      tunnel_proxy_rs 是纯 Rust 编写的高性能代理内核：<strong>100% 逻辑覆盖 gost v2/v3</strong>
+      的协议、传输与编排组件；同时原生实现 <strong>frp 级反向穿透</strong>——
+      TCP/UDP 端口映射、HTTP/HTTPS/HTTP3 虚拟主机、负载均衡、KCP/QUIC 承载。
+      单进程、低消耗、高并发。
+    </p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="tutorial.html">查看完整教程</a>
+      <a class="btn btn-ghost" href="#features">了解特性</a>
+    </div>
+    <div class="hero-window">
+      <div class="window-bar">
+        <span class="window-dot r"></span>
+        <span class="window-dot y"></span>
+        <span class="window-dot g"></span>
+        <span class="window-title">tunnel_proxy — 快速开始</span>
+      </div>
+      <div class="window-body">
+        <pre><code><span class="c-dim"># 本地 SOCKS5 代理</span>
+<span class="c-fn">tunnel_proxy</span> <span class="c-key">socks5</span> -l 0.0.0.0:1080
+
+<span class="c-dim"># 内网穿透：公网 server + 内网 client（frp 级）</span>
+<span class="c-fn">tunnel_proxy</span> <span class="c-key">pfserver</span> -l 0.0.0.0:7000 -k mykey -b 7001-7010
+<span class="c-fn">tunnel_proxy</span> <span class="c-key">pfclient</span> -s server:7000 -k mykey -t 127.0.0.1:80</code></pre>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><b data-count="18">0</b><span>代理协议</span></div>
+      <div class="stat"><b data-count="20">0</b><span>传输层</span></div>
+      <div class="stat"><b data-count="17">0</b><span>编排组件</span></div>
+      <div class="stat"><b data-count="215">0</b><span>单元测试全绿</span></div>
+      <div class="stat"><b data-count="3">0</b><span>平台可用</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= 特性 ======= -->
+<section class="section" id="features">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow">核心特性</p>
+      <h2 class="section-title">不止代理，而是一整套安全隧道平台</h2>
+      <p class="section-desc">从单点代理到内网穿透，从协议入口到流量编排，一个二进制全部搞定。</p>
+    </div>
+    <div class="feature-grid">
+      <div class="card feature-card">
+        <div class="card-icon">🧩</div>
+        <h3>18 种代理协议</h3>
+        <p>HTTP / HTTPS / HTTP/2 / HTTP/3 / Auto 自动协商 / SOCKS4a / SOCKS5 / SS / SS2 / SSR（含 auth_sha1_v4 协议插件）/ SSU / SNI / Relay / Trojan / Vmess / Vless / mtcp / Virtual。</p>
+      </div>
+      <div class="card feature-card">
+        <div class="card-icon">🚇</div>
+        <h3>20 种传输通道</h3>
+        <p>TCP / TLS / WS / H2 / gRPC / QUIC / KCP（含 FEC 纠错）/ DTLS / SSH / obfs4 / ohttp·otls / pht / ftcp / icmp / WebTransport / utls 指纹 / WireGuard 真实实现等。</p>
+      </div>
+      <div class="card feature-card">
+        <div class="card-icon">🧭</div>
+        <h3>Router 智能编排</h3>
+        <p>Bypass 分流、Selector 多策略选链、并发/速率/流量三层限流、IP 准入、Hosts、DNS、Observer 指标 + Webhook 通知、配置热重载。</p>
+      </div>
+      <div class="card feature-card">
+        <div class="card-icon">🕳️</div>
+        <h3>反向穿透 pf</h3>
+        <p>内网 client 主动连出穿透 NAT，frp 级能力：TCP/UDP 端口映射、HTTP/HTTPS/HTTP3 虚拟主机、负载均衡组、KCP/QUIC 传输承载，断线自动重连。</p>
+      </div>
+      <div class="card feature-card">
+        <div class="card-icon">📊</div>
+        <h3>观测与 API</h3>
+        <p>内嵌 Web 控制台、Prometheus 指标、完整状态查询、POST /api/reload 热重载。对接 Prometheus / Grafana 开箱即用。</p>
+      </div>
+      <div class="card feature-card">
+        <div class="card-icon">🖥️</div>
+        <h3>三平台一致</h3>
+        <p>Linux / macOS / Windows 全平台行为一致：Unix socket 与 named pipe 统一、透明代理自动切换实现、串口/ICMP/WireGuard 全平台可用。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= 协议 ======= -->
+<section class="section section-alt" id="protocols">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow">协议入口</p>
+      <h2 class="section-title">十八种代理协议，统一 Handler 抽象</h2>
+      <p class="section-desc">每个入口协议都可作为独立服务、链节点、或反向穿透的数据流处理端——同样的协议逻辑处处复用。</p>
+    </div>
+    <div class="badge-cloud">
+      <span class="badge badge-hot">HTTP</span>
+      <span class="badge">HTTPS<span class="badge-sub">HTTP/2 + TLS</span></span>
+      <span class="badge">HTTP/2</span>
+      <span class="badge">HTTP/3<span class="badge-sub">h3socks</span></span>
+      <span class="badge">Auto<span class="badge-sub">首字节嗅探</span></span>
+      <span class="badge">SOCKS4a</span>
+      <span class="badge badge-hot">SOCKS5</span>
+      <span class="badge">Shadowsocks</span>
+      <span class="badge">SS2022</span>
+      <span class="badge badge-hot">ShadowsocksR<span class="badge-sub">auth_sha1_v4</span></span>
+      <span class="badge">SSU</span>
+      <span class="badge">SNI</span>
+      <span class="badge">Relay<span class="badge-sub">CONNECT/BIND/UDP</span></span>
+      <span class="badge">Trojan</span>
+      <span class="badge">Vmess</span>
+      <span class="badge">Vless</span>
+      <span class="badge">mtcp<span class="badge-sub">mux 复用</span></span>
+      <span class="badge">Virtual</span>
+    </div>
+    <div class="proto-note card">
+      <h3>特殊协议同样覆盖</h3>
+      <p>TCP/UDP 端口转发 · RTCP/RUDP 加密转发 · Runix（Unix socket/named pipe 加密承载）· Stdio（SSH ProxyCommand）· DNS 代理 · Redirect/Redu 透明代理（Linux iptables，Windows/macOS 自动切 TUN）· File HTTP 文件服务 · Serial 串口三方向转发 · TUN/TAP 虚拟网卡。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======= 传输 ======= -->
+<section class="section" id="transports">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow">传输层</p>
+      <h2 class="section-title">二十种底层通道，可任意组合</h2>
+      <p class="section-desc">传输层与协议层正交：同一协议可跑在 TCP、TLS、WS、QUIC、KCP 任意通道之上。</p>
+    </div>
+    <div class="badge-cloud">
+      <span class="badge badge-hot">TCP</span>
+      <span class="badge">TLS / mTLS</span>
+      <span class="badge">WebSocket / WSS</span>
+      <span class="badge">HTTP/2 / h2c</span>
+      <span class="badge">gRPC</span>
+      <span class="badge">QUIC / HTTP/3</span>
+      <span class="badge badge-hot">KCP<span class="badge-sub">RS FEC 纠错</span></span>
+      <span class="badge">DTLS</span>
+      <span class="badge">SSH / SSHd</span>
+      <span class="badge">Unix / named pipe</span>
+      <span class="badge">obfs4<span class="badge-sub">防探测</span></span>
+      <span class="badge">ohttp / otls</span>
+      <span class="badge">pht<span class="badge-sub">Plain HTTP Tunnel</span></span>
+      <span class="badge">ftcp<span class="badge-sub">Fake TCP</span></span>
+      <span class="badge">ICMP<span class="badge-sub">QUIC-over-ICMP</span></span>
+      <span class="badge">WebTransport</span>
+      <span class="badge">utls<span class="badge-sub">指纹伪装</span></span>
+      <span class="badge badge-hot">WireGuard<span class="badge-sub">boringtun 真实实现</span></span>
+      <span class="badge">mux<span class="badge-sub">mtcp/mtls/mws/mwss</span></span>
+    </div>
+    <div class="transport-note card">
+      <h3>KCP 与 FEC</h3>
+      <p>对齐 gost 全参数（mtu/window/dataShards/parityShards/nodelay/interval/resend/nc/sndwnd/rcvwnd/mss/ttl/ackNodelay），内置 GF(2^8) Reed-Solomon 前向纠错——丢包链路下依旧稳定。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======= 反向穿透 pf ======= -->
+<section class="section section-pf" id="pf">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow">反向穿透</p>
+      <h2 class="section-title">内网穿透：端口映射与协议复用</h2>
+      <p class="section-desc">内网 client 主动连出（可穿 NAT），公网用户访问 server 分配端口即可触达内网服务。</p>
+    </div>
+    <div class="pf-grid">
+      <div class="card pf-card">
+        <h3>🔌 TCP 端口映射</h3>
+        <p>random / fixed / client 三模式端口分配，公网连接经单条加密 mux 长连接复用转发。</p>
+        <pre><code>tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010
+tunnel_proxy pfclient --server server:7000 --password mykey --target 127.0.0.1:80</code></pre>
+      </div>
+      <div class="card pf-card">
+        <h3>📡 UDP 穿透</h3>
+        <p>公网 UDP 端口映射到内网 UDP 服务，每数据报一条 mux 流一问一答（DNS 等场景）。</p>
+        <pre><code>tunnel_proxy pfclient --server server:7000 --password mykey --udp 127.0.0.1:5353</code></pre>
+      </div>
+      <div class="card pf-card">
+        <h3>🌐 HTTP / HTTPS / HTTP3 虚拟主机</h3>
+        <p>多域名共享一个公网端口，分别按 Host 头、TLS SNI、QPACK :authority 路由到内网。</p>
+        <pre><code>tunnel_proxy pfserver --password mykey --mode fixed --port 7001 \
+  --vhost-http 0.0.0.0:8080 --vhost-https 0.0.0.0:8443 \
+  --vhost-http3 0.0.0.0:443
+tunnel_proxy pfclient --server server:7000 --password mykey \
+  --domain app.example.com --target 127.0.0.1:80</code></pre>
+      </div>
+      <div class="card pf-card">
+        <h3>⚖️ 负载均衡组</h3>
+        <p>同组多个 client 共享一个公网端口，连接按 RR 轮询分发，断开自动移出成员。</p>
+        <pre><code>tunnel_proxy pfclient --server server:7000 --password mykey --group web --target 127.0.0.1:8081
+tunnel_proxy pfclient --server server:7000 --password mykey --group web --target 127.0.0.1:8082</code></pre>
+      </div>
+      <div class="card pf-card">
+        <h3>🚇 KCP / QUIC 传输承载</h3>
+        <p>隧道跑在 KCP 或 QUIC 上：弱网抗丢包、更低握手延迟，与 frp 的 kcp/quic 传输语义一致。</p>
+        <pre><code>tunnel_proxy pfserver --password mykey --pool 7001-7010 --transport kcp
+tunnel_proxy pfclient --server server:7000 --password mykey --transport kcp</code></pre>
+      </div>
+      <div class="card pf-card pf-card-highlight">
+        <h3>🚀 全协议 Handler 复用</h3>
+        <p>公网端口可以是标准 SOCKS5/HTTP/SS/Trojan/Vmess… 代理入口，协议解析全部发生在内网侧，还能挂载 Router 链编排。</p>
+        <pre><code># 公网端口 = 后端在内网的 SOCKS5 代理
+tunnel_proxy pfclient --server server:7000 --password mykey \
+  --mode client --port 8080 --proto socks5 --config router.yaml
+# 公网用户：curl -x socks5h://&lt;server&gt;:8080 https://example.com</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= 教程 ======= -->
+<section class="section section-alt" id="tutorial">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow">真实使用教程</p>
+      <h2 class="section-title">从零到内网穿透，四步上手</h2>
+      <p class="section-desc">以下命令全部真实可运行。十八种协议、二十种传输、端口转发与反向穿透全场景的完整手册见：</p>
+      <div style="margin-top: 22px;">
+        <a class="btn btn-primary" href="tutorial.html">打开完整教程</a>
+      </div>
+    </div>
+
+    <div class="tutorial-grid">
+      <div class="tutorial-step card">
+        <div class="step-num">01</div>
+        <h3>构建与本地代理</h3>
+        <pre><code>cargo build --release
+# 产物 target/release/tunnel_proxy
+
+# 本地 SOCKS5 代理
+tunnel_proxy socks5 -l 0.0.0.0:1080
+curl -x socks5h://127.0.0.1:1080 https://example.com</code></pre>
+      </div>
+
+      <div class="tutorial-step card">
+        <div class="step-num">02</div>
+        <h3>密码代理与链式转发</h3>
+        <pre><code># SS / Trojan / Vmess 密码代理
+tunnel_proxy ss -l 0.0.0.0:8388 -m aes-256-gcm -k pass
+tunnel_proxy trojan -l 0.0.0.0:8443 -k pass
+
+# 多级代理链（逐跳转发）
+tunnel_proxy chain -l 0.0.0.0:2080 -f chain.yaml</code></pre>
+      </div>
+
+      <div class="tutorial-step card">
+        <div class="step-num">03</div>
+        <h3>Router 编排 + 控制台</h3>
+        <pre><code>tunnel_proxy run -l 0.0.0.0:12081 -C router.yaml \
+  --api 127.0.0.1:18085 --reload
+
+# Web 控制台 / 指标 / 热重载
+# GET /           内嵌仪表盘
+# GET /metrics     Prometheus 指标
+# POST /api/reload 配置热重载</code></pre>
+      </div>
+
+      <div class="tutorial-step card">
+        <div class="step-num">04</div>
+        <h3>内网穿透 · 把本地服务暴露到公网</h3>
+        <pre><code># 公网服务器
+tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010
+
+# 内网 client：透明转发本地 80
+tunnel_proxy pfclient --server server:7000 --password mykey --target 127.0.0.1:80
+
+# 公网用户访问 http://&lt;server&gt;:&lt;分配端口&gt; 即到达内网 80
+# 配合 --domain 域名注册 vhost、--group 组名做负载均衡、--transport 换 KCP/QUIC</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= 对比 ======= -->
+<section class="section" id="compare">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow">能力对比</p>
+      <h2 class="section-title">协议与传输覆盖 · 内网穿透能力</h2>
+      <p class="section-desc">同一内核覆盖代理协议、传输层与内网穿透场景。</p>
+    </div>
+    <div class="compare-grid">
+      <div class="card compare-card">
+        <h3>vs gost</h3>
+        <ul>
+          <li><span class="ok">✔</span> 协议 / 传输 / 组件 100% 逻辑覆盖</li>
+          <li><span class="ok">✔</span> SSR 全协议 × 混淆组合（含 auth_sha1_v4）</li>
+          <li><span class="ok">✔</span> WireGuard 真实实现（boringtun）</li>
+          <li><span class="plus">＋</span> 反向穿透 pf（内网穿透）</li>
+          <li><span class="plus">＋</span> 单进程多服务共享 Router</li>
+          <li><span class="plus">＋</span> splice 零拷贝（Linux）</li>
+        </ul>
+      </div>
+      <div class="card compare-card">
+        <h3>vs frp</h3>
+        <ul>
+          <li><span class="ok">✔</span> TCP / UDP 端口映射</li>
+          <li><span class="ok">✔</span> HTTP / HTTPS / HTTP3 虚拟主机</li>
+          <li><span class="ok">✔</span> 负载均衡组（RR）</li>
+          <li><span class="ok">✔</span> KCP / QUIC 传输承载</li>
+          <li><span class="plus">＋</span> 公网端口 = 任意协议代理入口</li>
+          <li><span class="plus">＋</span> 复用全部 Handler + Router 编排</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= 安装 ======= -->
+<section class="section section-alt" id="install">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow">安装与构建</p>
+      <h2 class="section-title">从源码构建</h2>
+      <p class="section-desc">需要 Rust 1.97+ 工具链。</p>
+    </div>
+    <div class="install-box card">
+      <pre><code>git clone &lt;repo-url&gt;
+cd tunnel_proxy_rs
+cargo build --release
+# 产物：target/release/tunnel_proxy
+
+# 质量门禁（CI 强制）
+cargo clippy --all-targets    # 0 warning
+cargo fmt --check             # 0 diff
+cargo test -p tunnel-proxy-core --lib   # 215 passed</code></pre>
+      <div class="install-links">
+        <a class="btn btn-primary" href="https://gost.run/" target="_blank" rel="noopener">查看文档</a>
+        <a class="btn btn-ghost" href="../docs/test-report-2026-08-29.md">全功能测试报告</a>
+        <a class="btn btn-ghost" href="#top">返回顶部</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= 页脚 ======= -->
+<footer class="footer">
+  <div class="container footer-inner">
+    <div>
+      <p class="footer-brand">▣ tunnel_proxy_rs</p>
+      <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
+    </div>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 215 单元测试全绿</p>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

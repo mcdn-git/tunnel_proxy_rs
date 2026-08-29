@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>使用教程 — tunnel_proxy_rs</title>
+<meta name="description" content="tunnel_proxy_rs 完整使用教程：架构概念、18 种代理协议、20 种传输、链式代理、Router 编排、端口转发、反向穿透 pf 全部场景、性能测试、WireGuard 与常见问题。">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-logo">▣</span>
+      <span class="brand-name">tunnel_proxy_rs</span>
+    </a>
+    <nav class="nav-links">
+      <a href="index.html#features">特性</a>
+      <a href="index.html#pf">反向穿透</a>
+      <a href="tutorial.html">教程</a>
+      <a href="reference.html">参考</a>
+      <a href="concepts.html">概念</a>
+      <a href="faq.html">FAQ</a>
+      <a class="nav-cta" href="install.html">安装</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" aria-label="菜单">☰</button>
+  </div>
+</header>
+
+<div class="tutorial-layout">
+  <aside class="toc" id="toc">
+    <p class="toc-title">目录</p>
+    <a class="toc-grp" href="#scenarios">0. 场景速查（先看这里）</a>
+    <a class="toc-sub" href="#scenario-proxy">A 本机代理上网</a>
+    <a class="toc-sub" href="#scenario-expose">B 内网穿透暴露服务</a>
+    <a class="toc-sub" href="#scenario-vhost">C 多域名共享端口</a>
+    <a class="toc-sub" href="#scenario-lb">D 负载均衡</a>
+    <a class="toc-sub" href="#scenario-router">E 企业统一出口</a>
+    <a class="toc-sub" href="#scenario-kcp">F 弱网 KCP/QUIC</a>
+    <a class="toc-sub" href="#scenario-ssh">G SSH 反向隧道</a>
+    <a class="toc-sub" href="#scenario-socks-expose">H 公网端口做代理入口</a>
+    <a class="toc-sub" href="#scenario-p2p">I P2P 直连</a>
+    <a class="toc-sub" href="#scenario-stcp">J 不暴露端口访问</a>
+    <a class="toc-grp" href="#install">1. 安装与构建</a>
+    <a class="toc-sub" href="#install-env">环境要求</a>
+    <a class="toc-sub" href="#install-build">构建</a>
+    <a class="toc-sub" href="#install-log">日志与验证</a>
+    <a class="toc-grp" href="#concept">2. 核心概念</a>
+    <a class="toc-sub" href="#concept-arch">三层架构</a>
+    <a class="toc-sub" href="#concept-flow">数据流</a>
+    <a class="toc-grp" href="#proxy">3. 正向代理入口</a>
+    <a class="toc-sub" href="#proxy-socks">SOCKS4 / SOCKS5 / Auto</a>
+    <a class="toc-sub" href="#proxy-http">HTTP / HTTPS / HTTP2</a>
+    <a class="toc-sub" href="#proxy-cipher">SS / SS2 / SSR / SSU</a>
+    <a class="toc-sub" href="#proxy-advanced">Trojan / Vmess / Vless</a>
+    <a class="toc-sub" href="#proxy-sni-relay">SNI / Relay</a>
+    <a class="toc-sub" href="#proxy-http3">HTTP3 / WebTransport</a>
+    <a class="toc-sub" href="#proxy-obfs">混淆传输</a>
+    <a class="toc-grp" href="#transport">4. 传输层</a>
+    <a class="toc-grp" href="#chain">5. 链式代理</a>
+    <a class="toc-sub" href="#chain-node">节点字段</a>
+    <a class="toc-sub" href="#chain-hops">多 hop 分组</a>
+    <a class="toc-grp" href="#router">6. Router 编排与 API</a>
+    <a class="toc-sub" href="#router-config">配置详解</a>
+    <a class="toc-sub" href="#router-api">API 控制台</a>
+    <a class="toc-sub" href="#router-multi">多服务模式</a>
+    <a class="toc-grp" href="#forward">7. 端口转发与特殊服务</a>
+    <a class="toc-sub" href="#forward-basic">TCP / UDP 转发</a>
+    <a class="toc-sub" href="#forward-enc">加密转发</a>
+    <a class="toc-sub" href="#forward-special">DNS / File / Stdio / Redirect / Serial</a>
+    <a class="toc-grp" href="#pf">8. 反向穿透 pf（重点）</a>
+    <a class="toc-sub" href="#pf-arch">架构与注册</a>
+    <a class="toc-sub" href="#pf-tcp">TCP 端口映射</a>
+    <a class="toc-sub" href="#pf-udp">UDP 穿透</a>
+    <a class="toc-sub" href="#pf-vhost">虚拟主机 vhost</a>
+    <a class="toc-sub" href="#pf-group">负载均衡组</a>
+    <a class="toc-sub" href="#pf-transport">KCP / QUIC 承载</a>
+    <a class="toc-sub" href="#pf-proto">协议模式</a>
+    <a class="toc-sub" href="#pf-params">参数全表</a>
+    <a class="toc-grp" href="#bench">9. 性能测试</a>
+    <a class="toc-grp" href="#wg">10. WireGuard</a>
+    <a class="toc-grp" href="#faq">11. 常见问题</a>
+    <a class="toc-grp" href="#quality">12. 质量与文档</a>
+  </aside>
+
+  <article class="doc">
+    <h1>tunnel_proxy_rs 使用教程</h1>
+    <p class="doc-sub">完整、齐全、真实——所有命令均与 CLI 实现一一核对，可直接复制运行。想快速上手？先看「0. 场景速查」，按你的需求复制命令即可。</p>
+
+    <!-- ========== 0 场景速查 ========== -->
+    <h2 id="scenarios">0. 场景速查（先看这里）</h2>
+    <p>按「你想做什么」选择场景，命令已按 <b>公网端 → 内网端 → 客户端验证</b> 完整给出，可直接复制。每个场景末尾标注对应详细章节。</p>
+
+    <h3 id="scenario-proxy">场景 A · 本机代理上网（科学上网 / 突破访问限制）</h3>
+    <p>在本机起一个 SOCKS5 代理，浏览器/命令行都走它：</p>
+<pre><code># ① 启动 SOCKS5 代理（本机监听）
+tunnel_proxy socks5 --listen 0.0.0.0:1080
+# ② 验证（另开终端）
+curl -x socks5h://127.0.0.1:1080 https://example.com
+# 浏览器：设置代理 socks5://127.0.0.1:1080 即可</code></pre>
+    <div class="hint">需要认证：<code>socks5 -u alice -p secret</code>；多用户：<code>-a alice:secret</code>。加密代理用 <code>ss</code> / <code>ssr</code> / <code>trojan</code> 子命令。→ 详见 <a class="inline" href="#proxy">3. 正向代理入口</a></div>
+
+    <h3 id="scenario-expose">场景 B · 把内网服务暴露到公网（内网穿透）</h3>
+    <p>内网一台机器（如家里 NAS 的 Web）要让公网朋友直接访问，无需公网 IP：</p>
+<pre><code># ① 公网服务器（有公网 IP 的云主机）
+tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010 --mode random
+# ② 内网机器（无公网 IP）：把本机 80 端口映射出去
+tunnel_proxy pfclient --server server:7000 --password mykey --target 127.0.0.1:80
+# ③ 公网用户访问 http://server:&lt;分配端口&gt;（server 日志会打印端口）</code></pre>
+    <div class="hint">固定对外端口用 <code>--mode fixed --port 7001</code>；UDP（DNS/游戏）用 <code>--udp</code>。→ 详见 <a class="inline" href="#pf">8. 反向穿透 pf</a></div>
+
+    <h3 id="scenario-vhost">场景 C · 一个公网端口服务多个域名（虚拟主机）</h3>
+    <p>多个网站（app.example.com、api.example.com）共用一个公网端口，按 Host/SNI 分流到不同内网机器：</p>
+<pre><code># ① 公网 server：vhost 共享端口 8080（HTTPS 用 --vhost-https）
+tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --mode fixed --port 7001 \
+  --vhost-http 0.0.0.0:8080
+# ② 每台内网机器各注册一个域名
+tunnel_proxy pfclient --server server:7000 --password mykey --domain app.example.com --target 127.0.0.1:80
+tunnel_proxy pfclient --server server:7000 --password mykey --domain api.example.com --target 127.0.0.1:8080
+# ③ 公网用户 curl http://app.example.com:8080 → 内网 A；curl http://api.example.com:8080 → 内网 B</code></pre>
+    <div class="hint">vhost client 不占端口池；域名未注册返回 404。→ 详见 <a class="inline" href="#pf-vhost">8.4 虚拟主机</a></div>
+
+    <h3 id="scenario-lb">场景 D · 内网服务负载均衡</h3>
+    <p>两台内网机器提供同一服务，希望连接轮询分发、单台挂了自动摘除：</p>
+<pre><code># ① 公网 server（random 模式，组不占端口）
+tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010 --mode random
+# ② 两台内网机器注册到同一组 web
+tunnel_proxy pfclient --server server:7000 --password mykey --group web --target 127.0.0.1:8081
+tunnel_proxy pfclient --server server:7000 --password mykey --group web --target 127.0.0.1:8082
+# ③ 公网用户连 server:&lt;分配端口&gt;，连接轮流分发；某台断线自动移出</code></pre>
+    <div class="hint">配合 <code>--health-check tcp</code> 可定时探活，失败自动摘除。→ 详见 <a class="inline" href="#pf-group">8.5 负载均衡组</a></div>
+
+    <h3 id="scenario-router">场景 E · 企业统一出口代理（Router 编排 + 认证 + 限流 + 监控）</h3>
+    <p>公司多人共用一条出口，需要分链、限流、Web 控制台：</p>
+<pre><code># router.yaml（示例）
+# services:
+#   - name: socks
+#     addr: 0.0.0.0:1080
+#     proto: socks5
+#     users: [alice:secret]
+# chains: []
+tunnel_proxy run --listen 0.0.0.0:1080 --config router.yaml --api 127.0.0.1:18085 \
+  --api-user admin --api-pass secret
+# 浏览器打开 http://127.0.0.1:18085 查看监控（API 需 Basic 认证）</code></pre>
+    <div class="hint">Router 支持多链轮询、bypass 直连、连接/流量限流、Webhook 事件。→ 详见 <a class="inline" href="#router">6. Router 编排与 API</a></div>
+
+    <h3 id="scenario-kcp">场景 F · 弱网链路稳定传输（KCP / QUIC 承载）</h3>
+    <p>内网穿透链路丢包严重时，隧道改用 KCP（UDP 可靠流 + 可选 FEC）：</p>
+<pre><code># 两端 --transport 必须一致
+tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010 --transport kcp
+tunnel_proxy pfclient --server server:7000 --password mykey --target 127.0.0.1:80 --transport kcp</code></pre>
+    <div class="hint">QUIC 同理（更低握手延迟）；需要加密传输用 <code>tls</code>/<code>mtls</code>；WebSocket 承载用 <code>ws</code>/<code>wss</code>。→ 详见 <a class="inline" href="#pf-transport">8.6 传输承载</a></div>
+
+    <h3 id="scenario-ssh">场景 G · 用标准 SSH 客户端建反向隧道（SSH Gateway）</h3>
+    <p>不装 pfclient，直接用系统自带 <code>ssh -R</code> 把内网端口映射到公网：</p>
+<pre><code># ① 公网 server 开启 SSH Gateway
+tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --ssh-gateway 0.0.0.0:2222 \
+  --ssh-gateway-user u --ssh-gateway-pass p
+# ② 内网机器执行标准 ssh 命令
+ssh -R 7000:127.0.0.1:80 u@server
+# ③ 公网用户访问 http://server:7000 → 内网 80</code></pre>
+    <div class="hint">无需安装任何客户端，SSH 原生支持。→ 详见 <a class="inline" href="#pf">8. 反向穿透 pf</a></div>
+
+    <h3 id="scenario-socks-expose">场景 H · 公网端口 = 标准代理入口（把内网代理「搬」到公网）</h3>
+    <p>内网有一台 SOCKS5/SS 代理，想让公网用户直接连：</p>
+<pre><code># 内网 client：把公网端口 8080 变成「后端在内网的 SOCKS5 代理」
+tunnel_proxy pfclient --server server:7000 --password mykey --mode client --port 8080 --proto socks5
+# 公网用户：curl -x socks5h://server:8080 https://example.com</code></pre>
+    <div class="hint">--proto 支持 socks5/http/ss/trojan/vmess/vless 等全部协议。→ 详见 <a class="inline" href="#pf-proto">8.7 协议模式</a></div>
+
+    <h3 id="scenario-p2p">场景 I · P2P 直连（XTCP，不经服务器转发）</h3>
+    <p>两台都有 NAT 的内网机器直连互访，服务器只做牵线：</p>
+<pre><code># 目标端（内网）：注册 XTCP 服务 + 打洞地址
+tunnel_proxy pfclient --server server:7000 --password mykey --xtcp-server xt1 \
+  --xtcp-secret key1 --xtcp-punch 127.0.0.1:9200 --target 127.0.0.1:80
+# 访问端（内网）：本地监听 9000，直连失败自动回退中转
+tunnel_proxy pfclient --server server:7000 --password mykey --xtcp-server xt1 \
+  --xtcp-secret key1 --xtcp-listen 127.0.0.1:9000</code></pre>
+    <div class="hint">真实 NAT 环境下打洞地址需预测（frp 标准做法）；同机 127.0.0.1 已验证直连+回退两路径。→ 详见 <a class="inline" href="#pf">8. 反向穿透 pf</a></div>
+
+    <h3 id="scenario-stcp">场景 J · 不暴露公网端口的点对点访问（STCP）</h3>
+    <p>远程访问家里电脑的 SSH/数据库，但不想把端口暴露到公网：</p>
+<pre><code># 目标端（家里）：注册服务（不占公网端口）
+tunnel_proxy pfclient --server server:7000 --password mykey --stcp-server svc1 \
+  --stcp-secret key1 --target 127.0.0.1:22
+# 访问端（你）：本地监听 9000，连接经服务器按密钥中转
+tunnel_proxy pfclient --server server:7000 --password mykey --stcp-server svc1 \
+  --stcp-secret key1 --stcp-listen 127.0.0.1:9000
+# 然后 ssh -p 9000 user@127.0.0.1</code></pre>
+    <div class="hint">公网完全不暴露端口，只有持密钥的访问端能连。→ 详见 <a class="inline" href="#pf">8. 反向穿透 pf</a></div>
+
+    <!-- ========== 1 安装 ========== -->
+    <h2 id="install">1. 安装与构建</h2>
+    <h3 id="install-env">环境要求</h3>
+    <p>Rust 1.97+ 工具链（用 <code>rustup</code> 安装）。三平台均支持：Linux / macOS / Windows。Windows 下建议使用 <code>MSVC</code> 工具链。</p>
+    <h3 id="install-build">构建</h3>
+    <pre><code>git clone &lt;仓库地址&gt;
+cd tunnel_proxy_rs
+cargo build --release
+# 产物：target/release/tunnel_proxy</code></pre>
+    <table>
+      <tr><th>构建方式</th><th>命令</th><th>产物</th><th>说明</th></tr>
+      <tr><td>调试</td><td><code>cargo build</code></td><td><code>target/debug/tunnel_proxy</code></td><td>迭代开发，编译快</td></tr>
+      <tr><td>发布</td><td><code>cargo build --release</code></td><td><code>target/release/tunnel_proxy</code></td><td>生产使用，含优化</td></tr>
+      <tr><td>跨平台静态</td><td><code>cargo build --target x86_64-unknown-linux-musl --release</code></td><td>对应 target 目录</td><td>Linux 静态链接，可拷到任意发行版</td></tr>
+    </table>
+    <h3 id="install-log">日志与验证</h3>
+    <p>日志级别由 <code>RUST_LOG</code> 环境变量控制（默认 <code>info,tunnel_proxy_core=debug</code>）：</p>
+    <pre><code>RUST_LOG=debug tunnel_proxy socks5 -l 0.0.0.0:1080
+
+# 验证所有子命令与参数
+tunnel_proxy --version
+tunnel_proxy pfserver --help
+tunnel_proxy pfclient --help
+tunnel_proxy --help   # 查看全部子命令</code></pre>
+
+    <!-- ========== 2 概念 ========== -->
+    <h2 id="concept">2. 核心概念</h2>
+    <h3 id="concept-arch">三层架构</h3>
+    <p>tunnel_proxy_rs 把"代理"拆成三层，各自正交、任意组合：</p>
+    <table>
+      <tr><th>层</th><th>作用</th><th>例子</th></tr>
+      <tr><td><b>协议层 Handler</b></td><td>决定"数据怎么被代理"（目标解析 + 认证 + 转发语义）</td><td>SOCKS5、HTTP、SS、Trojan、Vmess…</td></tr>
+      <tr><td><b>传输层 Transport</b></td><td>决定"底层连接怎么建立"（加密、封装、可靠传输）</td><td>TCP、TLS、WS、QUIC、KCP、gRPC…</td></tr>
+      <tr><td><b>编排层 Router</b></td><td>决定"流量往哪走"（分流、选链、限流、准入、观测）</td><td>Chain、Bypass、Selector、Limiter…</td></tr>
+    </table>
+    <p>例如「经 KCP 传输的 SOCKS5 代理」= 协议 <code>SOCKS5</code> + 传输 <code>KCP</code>。而「反向穿透 pf」则把整条 mux 会话当作一条"隧道"，公网端口的数据流在隧道内复用到内网任意处理端。</p>
+    <h3 id="concept-flow">数据流</h3>
+    <p>正向代理：<code>客户端 → 传输层（加密/封装）→ 协议 Handler（解析目标）→ 目标服务</code>。</p>
+    <p>链式：<code>客户端 → 入口节点 → 中间节点1 → … → 出口节点 → 目标</code>，每跳都是「传输 + 协议」组合。</p>
+    <p>反向穿透：<code>公网用户 → pfserver 公网端口 → 加密 mux 隧道 → pfclient → 内网目标</code>。单条隧道承载控制流（注册/心跳）与所有数据流。</p>
+
+    <!-- ========== 3 正向代理 ========== -->
+    <h2 id="proxy">3. 正向代理入口</h2>
+    <p>18 种协议作为独立服务启动。客户端把代理地址指向这些端口即可。</p>
+
+    <h3 id="proxy-socks">SOCKS4 / SOCKS5 / Auto</h3>
+    <p><b>SOCKS5</b> 是最通用的代理协议，几乎所有工具都支持。tunnel_proxy_rs 的 SOCKS5 支持用户名密码认证与多用户。</p>
+    <pre><code># 基础（无认证）
+tunnel_proxy socks5 -l 0.0.0.0:1080
+# 单用户认证
+tunnel_proxy socks5 -l 0.0.0.0:1080 -u alice -p secret
+# 多用户（-a 可重复；启用时优先于 -u/-p）
+tunnel_proxy socks5 -l 0.0.0.0:1080 -a alice:secret -a bob:hunter2</code></pre>
+    <table>
+      <tr><th>参数</th><th>默认</th><th>说明</th></tr>
+      <tr><td><code>-l, --listen</code></td><td><code>0.0.0.0:1080</code></td><td>监听地址</td></tr>
+      <tr><td><code>-u, --user</code></td><td>—</td><td>用户名（开启认证）</td></tr>
+      <tr><td><code>-p, --pass</code></td><td>—</td><td>密码</td></tr>
+      <tr><td><code>-a, --users</code></td><td>—</td><td>多用户 <code>user:pass</code>，可重复</td></tr>
+    </table>
+    <p>验证：</p>
+    <pre><code>curl -x socks5h://127.0.0.1:1080 https://example.com
+curl -x socks5h://alice:secret@127.0.0.1:1080 https://example.com</code></pre>
+    <p><b>SOCKS4 / SOCKS4a</b>：兼容老客户端，无认证。</p>
+    <pre><code>tunnel_proxy socks4 -l 0.0.0.0:1080</code></pre>
+    <p><b>Auto</b>：同一端口自动协商 HTTP / SOCKS4 / SOCKS5（按首字节嗅探）。适合客户端协议不确定的场景。</p>
+    <pre><code>tunnel_proxy auto -l 0.0.0.0:1080
+curl -x socks5h://127.0.0.1:1080 https://example.com   # 走 SOCKS5
+curl -x http://127.0.0.1:1080 https://example.com      # 走 HTTP</code></pre>
+
+    <h3 id="proxy-http">HTTP / HTTPS / HTTP2</h3>
+    <p><b>HTTP</b>：标准 HTTP 代理，支持 Basic 认证与多用户。</p>
+    <pre><code>tunnel_proxy http -l 0.0.0.0:8080
+tunnel_proxy http -l 0.0.0.0:8080 -u user:pass
+tunnel_proxy http -l 0.0.0.0:8080 -a user1:pass1 -a user2:pass2
+curl -x http://127.0.0.1:8080 http://example.com</code></pre>
+    <p><b>HTTPS</b>：HTTP/2 over TLS（默认），<code>--http1</code> 切换为 gost 兼容的 HTTP/1.1 + TLS。缺省自动生成自签证书。</p>
+    <pre><code># HTTP/2 over TLS（默认）
+tunnel_proxy https -l 0.0.0.0:8444
+# 指定证书
+tunnel_proxy https -l 0.0.0.0:8444 --cert server.crt --key server.key
+# gost 兼容模式：HTTP/1.1 + TLS
+tunnel_proxy https -l 0.0.0.0:8444 --http1</code></pre>
+    <table>
+      <tr><th>参数</th><th>默认</th><th>说明</th></tr>
+      <tr><td><code>--cert / --key</code></td><td>自动自签</td><td>PEM 证书 / 私钥</td></tr>
+      <tr><td><code>--http1</code></td><td>false</td><td>HTTP/1.1 代理（gost https）</td></tr>
+      <tr><td><code>-a</code></td><td>—</td><td>多用户认证</td></tr>
+    </table>
+    <pre><code>curl -x https://127.0.0.1:8444 --proxy-insecure https://example.com</code></pre>
+    <p><b>HTTP/2</b>：明文 h2 CONNECT 代理（需支持 HTTP/2 的客户端）。</p>
+    <pre><code>tunnel_proxy http2 -l 0.0.0.0:8082</code></pre>
+
+    <h3 id="proxy-cipher">SS / SS2 / SSR / SSU</h3>
+    <p><b>Shadowsocks</b>：经典密码代理。加密方式支持 <code>aes-128-gcm</code> / <code>aes-256-gcm</code> / <code>chacha20-ietf-poly1305</code>。</p>
+    <pre><code>tunnel_proxy ss -l 0.0.0.0:8388 -m aes-256-gcm -k mypassword
+tunnel_proxy ss -l 0.0.0.0:8388 -m chacha20-ietf-poly1305 -k mypassword</code></pre>
+    <table>
+      <tr><th>参数</th><th>默认</th><th>说明</th></tr>
+      <tr><td><code>-m, --method</code></td><td><code>aes-256-gcm</code></td><td>AEAD 加密方式</td></tr>
+      <tr><td><code>-k, --password</code></td><td>必填</td><td>共享密码</td></tr>
+    </table>
+    <p><b>SS2（Shadowsocks 2022）</b>：新一代 AEAD 方案。</p>
+    <pre><code>tunnel_proxy ss2 -l 0.0.0.0:8390 -m 2022-blake3-aes-256-gcm -k mypassword</code></pre>
+    <p><b>SSR（ShadowsocksR）</b>：支持三种协议插件（<code>origin</code> / <code>auth_aes128_md5</code> / <code>auth_sha1_v4</code>）与混淆（<code>plain</code> / <code>http_simple</code> / <code>http_post</code>）。</p>
+    <pre><code># 基础 SSR
+tunnel_proxy ssr -l 0.0.0.0:8389 -m aes-256-cfb -k mypassword
+# 完整：CFB 流密码 + http_simple 混淆 + auth_sha1_v4 协议
+tunnel_proxy ssr -l 0.0.0.0:8389 -m aes-256-cfb -k mypassword \
+  -o http_simple -p auth_sha1_v4
+# 混淆校验域名（可选）
+tunnel_proxy ssr -l 0.0.0.0:8389 -m aes-256-cfb -k mypassword \
+  -o http_simple -g www.example.com -p auth_aes128_md5</code></pre>
+    <p><b>SSU</b>：SS 的 UDP relay。</p>
+    <pre><code>tunnel_proxy ssu -l 0.0.0.0:8388 -m aes-256-gcm -k mypassword</code></pre>
+
+    <h3 id="proxy-advanced">Trojan / Vmess / Vless</h3>
+    <p><b>Trojan</b>：TLS 包裹的 Trojan 协议，流量特征接近 HTTPS，抗封锁能力强。</p>
+    <pre><code>tunnel_proxy trojan -l 0.0.0.0:8443 -k mypassword
+# 验证（需 TLS 客户端）
+curl -x https://mypassword@127.0.0.1:8443 --proxy-insecure https://example.com</code></pre>
+    <p><b>Vmess / Vless</b>：VMess 协议（支持 aes-gcm / chacha20 加密）与轻量版 Vless。</p>
+    <pre><code>tunnel_proxy vmess -l 0.0.0.0:10086 --uuid 12345678-1234-1234-1234-123456789abc
+tunnel_proxy vless -l 0.0.0.0:10086 --uuid 12345678-1234-1234-1234-123456789abc</code></pre>
+    <table>
+      <tr><th>参数</th><th>说明</th></tr>
+      <tr><td><code>--uuid</code></td><td>用户 UUID（v4 格式）</td></tr>
+    </table>
+    <p>客户端配合 <code>vmessclient</code> / <code>vlessclient</code> 子命令做本地端到端验证。</p>
+
+    <h3 id="proxy-sni-relay">SNI / Relay</h3>
+    <p><b>SNI</b>：按 TLS ClientHello 的 SNI 域名路由到不同后端（类似 frp 的 vhostHTTPSPort，但作为独立服务）。</p>
+    <pre><code>tunnel_proxy sni -l 0.0.0.0:8443 -f routes.yaml</code></pre>
+    <p><code>routes.yaml</code>：</p>
+    <pre><code>example.com: 127.0.0.1:8080
+api.example.com: 127.0.0.1:9090</code></pre>
+    <p><b>Relay</b>：独立 relay 协议（VER + CONNECT/BIND/UDP 命令），支持用户认证。</p>
+    <pre><code>tunnel_proxy relay -l 0.0.0.0:8421
+tunnel_proxy relay -l 0.0.0.0:8421 -u alice -p secret
+# 客户端（stdio 中继，支持 nodelay）
+tunnel_proxy relayclient -s 127.0.0.1:8421 -u alice -p secret -t example.com:80</code></pre>
+
+    <h3 id="proxy-http3">HTTP3 / WebTransport</h3>
+    <p>基于 QUIC 的代理入口，降低握手延迟、抗丢包。</p>
+    <pre><code># HTTP/3 传输上跑 SOCKS5（gost h3socks）
+tunnel_proxy h3socks -l 0.0.0.0:4433
+# WebTransport 上跑 SOCKS5（gost wtsocks）
+tunnel_proxy wtsocks -l 0.0.0.0:4433</code></pre>
+
+    <h3 id="proxy-obfs">混淆传输代理</h3>
+    <p>把代理流量伪装成正常 HTTP/TLS 流量，抵御深度包检测与主动探测。</p>
+    <table>
+      <tr><th>命令</th><th>伪装方式</th><th>关键参数</th></tr>
+      <tr><td><code>obfs</code></td><td>HTTP 请求头混淆</td><td><code>-H</code> 伪装 Host</td></tr>
+      <tr><td><code>obfs4</code></td><td>均匀随机流量 + 定长认证帧（防探测）</td><td><code>-k</code> 预共享密码</td></tr>
+      <tr><td><code>ohttp</code></td><td>HTTP 伪装 + 长度帧</td><td><code>-H</code> 伪装 Host</td></tr>
+      <tr><td><code>otls</code></td><td>TLS 记录层伪装</td><td>—</td></tr>
+      <tr><td><code>pht</code></td><td>HTTP chunked 帧伪装</td><td>—</td></tr>
+      <tr><td><code>ftcp</code></td><td>伪 TCP 握手 + 透传</td><td>—</td></tr>
+    </table>
+    <pre><code>tunnel_proxy obfs  -l 0.0.0.0:1080 -H www.example.com
+tunnel_proxy obfs4 -l 0.0.0.0:1081 -k obfpass
+tunnel_proxy ohttp  -l 0.0.0.0:1082 -H www.example.com
+tunnel_proxy otls   -l 0.0.0.0:1083
+tunnel_proxy pht    -l 0.0.0.0:1084
+tunnel_proxy ftcp   -l 0.0.0.0:1085</code></pre>
+
+    <!-- ========== 4 传输层 ========== -->
+    <h2 id="transport">4. 传输层</h2>
+    <p>传输层决定"底层连接怎么建"：TCP 直连、TLS 加密、WS 伪装、QUIC 低延迟、KCP 抗丢包、gRPC 多路复用…</p>
+    <table>
+      <tr><th>命令</th><th>协议</th><th>用途</th></tr>
+      <tr><td><code>ws</code> / <code>wsc</code></td><td>WebSocket</td><td>HTTP 隧道伪装，<code>--tls</code> 开启 WSS</td></tr>
+      <tr><td><code>quic</code> / <code>quicclient</code></td><td>QUIC SOCKS5</td><td>UDP 低延迟，弱网抗丢包</td></tr>
+      <tr><td><code>grpc</code> / <code>grpcclient</code></td><td>gRPC</td><td>HTTP/2 多路复用隧道</td></tr>
+      <tr><td><code>mtls</code> / <code>mtlsclient</code></td><td>mTLS</td><td>双向证书认证，最高安全性</td></tr>
+      <tr><td><code>kcp</code> / <code>kcpclient</code></td><td>KCP</td><td>UDP 可靠流，支持 FEC 前向纠错</td></tr>
+      <tr><td><code>dtls</code> / <code>dtlsclient</code></td><td>DTLS</td><td>UDP 上的 TLS（PSK 认证）</td></tr>
+      <tr><td><code>h2</code> / <code>h2client</code></td><td>HTTP/2 隧道</td><td>TCP 转发经 h2 CONNECT</td></tr>
+      <tr><td><code>h3</code> / <code>h3client</code></td><td>HTTP/3 隧道</td><td>QUIC 上的 TCP 转发</td></tr>
+      <tr><td><code>wt</code> / <code>wtclient</code></td><td>WebTransport</td><td>HTTP/3 双向流隧道</td></tr>
+      <tr><td><code>sshd</code> / <code>sshtunnel</code></td><td>SSH</td><td>SSH direct-tcpip 隧道</td></tr>
+      <tr><td><code>mtcp</code> / <code>mux</code></td><td>mux 复用</td><td>一条 TCP 承载多条流</td></tr>
+      <tr><td><code>unix</code></td><td>Unix socket</td><td>本机高性能转发</td></tr>
+      <tr><td><code>tunnel</code></td><td>TCP 隧道</td><td>通用 TCP 隧道服务</td></tr>
+    </table>
+    <pre><code># KCP 传输转发（FEC 纠错：data-shards 数据分片 + parity-shards 校验分片）
+tunnel_proxy kcp -l 0.0.0.0:29900 -t 127.0.0.1:80 --data-shards 17 --parity-shards 3
+# DTLS（PSK 认证）
+tunnel_proxy dtls -l 0.0.0.0:29901 -t 127.0.0.1:80 -p psk123
+# mux 复用
+tunnel_proxy mtcp -l 0.0.0.0:9006
+tunnel_proxy mux -l 0.0.0.0:9005 -t 127.0.0.1:80</code></pre>
+
+    <!-- ========== 5 链 ========== -->
+    <h2 id="chain">5. 链式代理</h2>
+    <p>Chain 把多个节点串成一条转发链：本机入口 → 逐跳转发 → 链尾连目标。适合"过境中转"等场景。建链失败会整链重试。</p>
+    <pre><code>tunnel_proxy chain -l 0.0.0.0:2080 -f chain.yaml</code></pre>
+    <h3 id="chain-node">节点字段</h3>
+    <table>
+      <tr><th>字段</th><th>说明</th></tr>
+      <tr><td><code>name</code></td><td>节点名</td></tr>
+      <tr><td><code>proto</code></td><td>协议：Http / Socks5 / Shadowsocks / Shadowsocks2 / ShadowsocksR / Vmess / Vless / Trojan / Relay / Sni</td></tr>
+      <tr><td><code>transport</code></td><td>传输：Tcp / Tls / WebSocket / Wss / Grpc / Quic / Kcp / Dtls / Http3 / Wt / Obfs4 / Unix / Mtcp / Mtls / Mws / Mwss / Ohttp / Otls / Pht / Ftcp / Utls / Wg</td></tr>
+      <tr><td><code>addr</code></td><td>节点地址 <code>host:port</code>（Unix 为 socket 路径）</td></tr>
+      <tr><td><code>user / pass</code></td><td>用户名密码；Vmess/Vless 的 UUID</td></tr>
+      <tr><td><code>method</code></td><td>加密方式（SS cipher / Vmess aes-gcm·chacha20 / Utls 指纹）</td></tr>
+      <tr><td><code>protocol</code></td><td>SSR 协议插件（origin / auth_aes128_md5）</td></tr>
+      <tr><td><code>tls_cert / tls_key / tls_ca</code></td><td>客户端证书（mTLS）/ 服务器 CA</td></tr>
+    </table>
+    <pre><code>nodes:
+  - { name: hop1, proto: Socks5, transport: Tcp, addr: "127.0.0.1:1081" }
+  - { name: hop2, proto: Ss, transport: Tcp, addr: "127.0.0.1:8388",
+      method: aes-256-gcm, pass: "mypassword" }
+  - { name: hop3, proto: Trojan, transport: Tls, addr: "127.0.0.1:8443",
+      pass: "mypassword" }</code></pre>
+    <h3 id="chain-hops">多 hop 分组</h3>
+    <p><code>hops</code> 非空时优先走 hop 模式：链按 <code>[hop1组, hop2组, …]</code> 顺序推进，每组内轮询选节点，实现"每段多个可选出口"。</p>
+    <pre><code>hops:
+  - nodes: [{ name: a1, proto: Socks5, transport: Tcp, addr: "1.1.1.1:1080" },
+            { name: a2, proto: Socks5, transport: Tcp, addr: "2.2.2.2:1080" }]
+  - nodes: [{ name: b1, proto: Ss, transport: Tcp, addr: "3.3.3.3:8388",
+              method: aes-256-gcm, pass: "x" }]</code></pre>
+    <p>客户端验证：<code>curl -x socks5h://127.0.0.1:2080 https://example.com</code>。</p>
+
+    <!-- ========== 6 Router ========== -->
+    <h2 id="router">6. Router 编排与 API</h2>
+    <p>Router 是完整的流量编排引擎：多条候选链 + 分流 + 选链策略 + 限流 + 准入 + 观测，单进程运行。</p>
+    <pre><code>tunnel_proxy run -l 0.0.0.0:12081 -C router.yaml --api 127.0.0.1:18085 --reload</code></pre>
+    <h3 id="router-config">配置详解</h3>
+    <pre><code>chains:                  # 候选代理链（可多条）
+  - name: hop1
+    nodes:
+      - { name: p1, proto: Socks5, transport: Tcp, addr: "127.0.0.1:1077" }
+strategy: RoundRobin      # RoundRobin / Random / Weighted / Hash
+bypass:                   # 直连名单（绕过代理）
+  - localhost
+  - 10.0.0.0/8
+  - "*.internal"
+reverse: false            # true = bypass 名单反向为"必须走代理"
+max_conn: 1000            # 并发连接上限（0 = 不限）
+admission:                # 接入 IP 准入（白/黑名单）
+  deny: ["1.2.3.4"]
+rate: 0                   # 每连接速率限流（字节/秒，0 = 不限）
+traffic: 0                # 每连接总流量上限（字节，0 = 不限）
+hosts: { my.local: 127.0.0.1 }   # 域名 → IP 映射
+dns: 8.8.8.8:53           # 上游 DNS（默认系统 DNS）
+dns_proxy: false          # 经链解析（防污染）</code></pre>
+    <table>
+      <tr><th>策略</th><th>行为</th></tr>
+      <tr><td><code>RoundRobin</code></td><td>轮询选链</td></tr>
+      <tr><td><code>Random</code></td><td>随机选链</td></tr>
+      <tr><td><code>Weighted</code></td><td>按节点权重选链</td></tr>
+      <tr><td><code>Hash</code></td><td>按目标哈希选链（同目标恒走同链）</td></tr>
+    </table>
+    <h3 id="router-api">API 控制台</h3>
+    <table>
+      <tr><th>端点</th><th>说明</th></tr>
+      <tr><td><code>GET /</code>、<code>GET /ui</code></td><td>内嵌 Web 仪表盘（无外部依赖）</td></tr>
+      <tr><td><code>GET /metrics</code></td><td>指标（默认 JSON；<code>Accept: text/plain</code> 为 Prometheus 文本）</td></tr>
+      <tr><td><code>GET /metrics/prometheus</code></td><td>始终 Prometheus 文本</td></tr>
+      <tr><td><code>GET /status</code></td><td>完整状态（指标 + 链信息 + 策略）</td></tr>
+      <tr><td><code>POST /api/reload</code></td><td>触发配置热重载</td></tr>
+    </table>
+    <pre><code>curl http://127.0.0.1:18085/metrics/prometheus
+curl -X POST http://127.0.0.1:18085/api/reload</code></pre>
+    <h3 id="router-multi">多服务模式</h3>
+    <p>一个进程同时监听多个端口跑不同协议，共享同一 Router（准入/限流/观测）。</p>
+    <pre><code>services:
+  - { name: socks, addr: "0.0.0.0:12081", proto: socks5 }
+  - { name: http,  addr: "0.0.0.0:12082", proto: http }
+  - { name: ss,    addr: "0.0.0.0:12083", proto: ss,
+      method: aes-256-gcm, password: "x" }</code></pre>
+
+    <!-- ========== 7 转发 ========== -->
+    <h2 id="forward">7. 端口转发与特殊服务</h2>
+    <h3 id="forward-basic">TCP / UDP 转发</h3>
+    <pre><code># TCP 转发：本地 9000 → 127.0.0.1:8080
+tunnel_proxy forward -l 0.0.0.0:9000 -t 127.0.0.1:8080
+# UDP 转发（DNS 等）
+tunnel_proxy forward -l 0.0.0.0:9000 -t 127.0.0.1:5353 -T udp
+# 经代理链转发（-f chain.yaml）
+tunnel_proxy forward -l 0.0.0.0:9000 -t example.com:80 -f chain.yaml</code></pre>
+    <h3 id="forward-enc">加密转发</h3>
+    <p><b>RTCP / RUDP</b>：AEAD 加密的 TCP/UDP 转发，防中间人嗅探。客户端以 stdio 中继接入。</p>
+    <pre><code># 服务器（监听）
+tunnel_proxy rtcp -l 0.0.0.0:12000 -k password
+tunnel_proxy rudp -l 0.0.0.0:12000 -k password
+# 客户端（stdio 中继）
+echo "ping" | tunnel_proxy rtcpclient -s 127.0.0.1:12000 -k password -t 127.0.0.1:80</code></pre>
+    <p><b>Runix</b>：加密的 Unix socket / Windows named pipe 承载（gost runix）。</p>
+    <pre><code>tunnel_proxy runix -l \\.\pipe\runix -k password      # Windows
+tunnel_proxy runix -l /tmp/runix.sock -k password     # Linux/macOS
+tunnel_proxy runixclient -s /tmp/runix.sock -k password -t 127.0.0.1:80</code></pre>
+    <h3 id="forward-special">DNS / File / Stdio / Redirect / Serial</h3>
+    <pre><code># DNS 代理（UDP 53）
+tunnel_proxy dns -l 0.0.0.0:5353 -u 8.8.8.8:53
+nslookup example.com 127.0.0.1 -port=5353
+
+# HTTP 文件服务
+tunnel_proxy file -l 0.0.0.0:8081 -d /var/www
+curl http://127.0.0.1:8081/index.html
+
+# stdio 转发（SSH ProxyCommand：把 ssh 的 stdin/stdout 当连接）
+tunnel_proxy stdio -t 127.0.0.1:8080
+# 用法：ssh -o ProxyCommand="tunnel_proxy stdio -t 127.0.0.1:8080" user@host
+
+# 透明代理（Linux root；非 Linux 自动切换 TUN 实现）
+tunnel_proxy redirect -l 0.0.0.0:12345 -f router.yaml    # TCP
+tunnel_proxy redu -l 0.0.0.0:12345 -f router.yaml         # UDP
+
+# TUN / TAP 虚拟网卡（管理员权限 + 驱动）
+tunnel_proxy tun --address 10.0.0.1 -f router.yaml
+
+# 串口转发（三方向）
+tunnel_proxy serial -p COM1 -t 127.0.0.1:8080             # 串口 → TCP 服务
+tunnel_proxy serial -p /dev/ttyS0,115200,odd -t COM2      # 串口 → 串口
+tunnel_proxy serial -p COM1 -l 0.0.0.0:8080               # TCP 监听 → 串口</code></pre>
+
+    <!-- ========== 8 pf ========== -->
+    <h2 id="pf">8. 反向穿透 pf（重点）</h2>
+    <p>内网穿透：内网服务没有公网 IP，由内网 client 主动连出（可穿 NAT）向公网 server 注册，公网用户访问 server 端口即触达内网。</p>
+    <h3 id="pf-arch">架构与注册</h3>
+    <p>架构：</p>
+    <pre><code>公网用户 ──► pfserver(公网:7000) ──加密 mux 隧道──► pfclient(内网) ──► 内网目标
+              │ 隧道端口 :7000
+              │ 公网数据端口 :7001-7010
+              │ vhost 端口 :8080/8443/443
+              ▼
+          公网可见：&lt;server&gt;:&lt;端口&gt;</code></pre>
+    <p>工作流程：</p>
+    <ol>
+      <li>client 连 server 隧道端口，先做 <b>SS2 AES-256-GCM 加密握手</b>，再建立 <b>mux 多路复用会话</b>。</li>
+      <li>client 发送注册帧（密钥、分配模式、可选域名/组名/端口），server 校验密钥并分配公网端口。</li>
+      <li>公网用户连公网端口 → server 在 mux 上打开一条数据流 → 转发到内网 client → client 按模式处理。</li>
+      <li>每 30 秒心跳保活（`--heartbeat-interval` 可调）；client 断线后按指数退避（默认 1s→60s 封顶，`--reconnect-backoff`/`--reconnect-backoff-max` 可调）自动重连并重新注册，端口映射自动恢复。</li>
+    </ol>
+    <h3 id="pf-tcp">TCP 端口映射</h3>
+    <pre><code># 公网 server：隧道 7000，端口池 7001-7010，随机分配
+tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010 --mode random
+# 内网 client：把本地 80 暴露到公网
+tunnel_proxy pfclient --server server:7000 --password mykey --target 127.0.0.1:80
+# 公网用户：访问 http://&lt;server&gt;:&lt;分配端口&gt; 即到达内网 80</code></pre>
+    <table>
+      <tr><th>分配模式</th><th>server 侧</th><th>client 侧</th><th>适用</th></tr>
+      <tr><td><code>random</code>（默认）</td><td><code>--pool 7001-7010</code> 池内随机</td><td>—</td><td>多服务共存</td></tr>
+      <tr><td><code>fixed</code></td><td><code>--port 7001</code> 固定</td><td>—</td><td>固定对外端口</td></tr>
+      <tr><td><code>client</code></td><td><code>--pool 7001-7010</code> 校验</td><td><code>--port 7001</code> 指定</td><td>client 主动要端口</td></tr>
+    </table>
+    <h3 id="pf-udp">UDP 穿透</h3>
+    <pre><code>tunnel_proxy pfclient --server server:7000 --password mykey --udp 127.0.0.1:5353
+# 公网用户：nslookup example.com &lt;server&gt;:&lt;分配端口&gt;
+# 实现：每数据报一条 mux 流一问一答（DNS 等场景），载荷带长度前缀分帧</code></pre>
+    <h3 id="pf-vhost">虚拟主机 vhost</h3>
+    <p>多个域名共享一个公网端口，服务器按请求头路由到注册了该域名的内网 client。支持三种协议入口：</p>
+    <table>
+      <tr><th>入口</th><th>server 参数</th><th>路由依据</th><th>公网访问</th></tr>
+      <tr><td>HTTP</td><td><code>--vhost-http :8080</code></td><td>Host 头</td><td><code>curl http://app.example.com:8080</code></td></tr>
+      <tr><td>HTTPS</td><td><code>--vhost-https :8443</code></td><td>TLS SNI</td><td><code>curl -k https://api.example.com:8443</code></td></tr>
+      <tr><td>HTTP/3</td><td><code>--vhost-http3 :443</code>（UDP）</td><td>QPACK :authority</td><td><code>curl --http3 https://app.example.com</code></td></tr>
+    </table>
+    <pre><code>tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --mode fixed --port 7001 \
+  --vhost-http 0.0.0.0:8080 --vhost-https 0.0.0.0:8443 --vhost-http3 0.0.0.0:443
+
+# 每个域名一个 client
+tunnel_proxy pfclient --server server:7000 --password mykey --domain app.example.com --target 127.0.0.1:80
+tunnel_proxy pfclient --server server:7000 --password mykey --domain api.example.com --target 127.0.0.1:8080</code></pre>
+    <div class="hint">未注册域名：HTTP 返回 404；HTTPS / HTTP3 直接断开（无法发明文错误）。vhost client 不占端口池。</div>
+    <h3 id="pf-group">负载均衡组</h3>
+    <p>同组多个 client 提供同一服务，共享一个公网端口；新连接按 RR 轮询分发到组内成员；某 client 断线自动移出，组空则释放端口。</p>
+    <pre><code>tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010 --mode random
+tunnel_proxy pfclient --server server:7000 --password mykey --group web --target 127.0.0.1:8081   # 后端 A
+tunnel_proxy pfclient --server server:7000 --password mykey --group web --target 127.0.0.1:8082   # 后端 B
+# 公网用户连 &lt;server&gt;:&lt;分配端口&gt;，连接轮流分发到 A / B</code></pre>
+    <h3 id="pf-transport">KCP / QUIC 承载</h3>
+    <p>隧道底层可换 KCP（UDP 可靠流，弱网抗丢包，可开 FEC）或 QUIC（更低握手延迟）。server 与 client 的 <code>--transport</code> 必须一致。</p>
+    <pre><code># KCP 承载
+tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010 --transport kcp
+tunnel_proxy pfclient --server server:7000 --password mykey --target 127.0.0.1:80 --transport kcp
+# QUIC 承载
+tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010 --transport quic
+tunnel_proxy pfclient --server server:7000 --password mykey --target 127.0.0.1:80 --transport quic</code></pre>
+    <h3 id="pf-proto">协议模式</h3>
+    <p>公网端口可以直接是标准代理入口——协议解析与目标连接全部发生在内网侧，支持挂载 Router 编排。</p>
+    <pre><code># 公网端口 = 后端在内网的 SOCKS5 代理（可带 Router 链）
+tunnel_proxy pfclient --server server:7000 --password mykey --mode client --port 8080 \
+  --proto socks5 --config router.yaml
+# 公网用户：curl -x socks5h://&lt;server&gt;:8080 https://example.com
+
+# 其他协议（--proto 支持全部正向入口）
+tunnel_proxy pfclient --server server:7000 --password mykey --proto ss \
+  --method aes-256-gcm --proxy-password xxx
+tunnel_proxy pfclient --server server:7000 --password mykey --proto trojan --proxy-password xxx
+tunnel_proxy pfclient --server server:7000 --password mykey --proto vmess --uuid 12345678-1234-1234-1234-123456789abc
+tunnel_proxy pfclient --server server:7000 --password mykey --proto ssr --method aes-256-cfb \
+  --proxy-password xxx --obfs http_simple --ssr-proto auth_sha1_v4
+# 可用 proto：socks5/socks4/auto/http/http2/https/ss/ss2/ssr/trojan/vmess/vless/sni/file</code></pre>
+    <h3 id="pf-params">参数全表</h3>
+    <p><b>pfserver</b></p>
+    <table>
+      <tr><th>参数</th><th>默认</th><th>说明</th></tr>
+      <tr><td><code>--listen</code></td><td><code>0.0.0.0:7000</code></td><td>隧道监听地址</td></tr>
+      <tr><td><code>--password</code></td><td>必填</td><td>共享密钥（client 注册凭证）</td></tr>
+      <tr><td><code>--pool</code></td><td>—</td><td>公网端口池 <code>7001-7010</code>（random/client 模式）</td></tr>
+      <tr><td><code>--mode</code></td><td><code>random</code></td><td>random / fixed / client</td></tr>
+      <tr><td><code>--port</code></td><td>—</td><td>固定公网端口（fixed 模式）</td></tr>
+      <tr><td><code>--vhost-http</code></td><td>—</td><td>HTTP vhost 共享端口</td></tr>
+      <tr><td><code>--vhost-https</code></td><td>—</td><td>HTTPS vhost 共享端口</td></tr>
+      <tr><td><code>--vhost-http3</code></td><td>—</td><td>HTTP/3 vhost 共享端口（UDP）</td></tr>
+      <tr><td><code>--transport</code></td><td><code>tcp</code></td><td>tcp / kcp / quic / tls / mtls / ws / wss</td></tr>
+      <tr><td><code>--tls-cert / --tls-key</code></td><td>—</td><td>TLS 服务端证书/私钥（tls/mtls/ws/wss；缺省自签）</td></tr>
+      <tr><td><code>--tls-client-ca</code></td><td>—</td><td>mTLS 客户端 CA（mtls 必填）</td></tr>
+      <tr><td><code>--oidc-secret / --oidc-issuer / --oidc-audience</code></td><td>—</td><td>OIDC 认证（frp auth.method=oidc，HS256）</td></tr>
+      <tr><td><code>--tcpmux</code></td><td>—</td><td>TCPMUX 单端口（frp tcpmux，CONNECT 目标路由）</td></tr>
+      <tr><td><code>--mark</code></td><td>—</td><td>socket 标记（gost mark/so_mark，Linux 策略路由）</td></tr>
+    </table>
+    <p><b>pfclient</b></p>
+    <table>
+      <tr><th>参数</th><th>说明</th></tr>
+      <tr><td><code>--server</code></td><td>服务器地址 <code>server:7000</code></td></tr>
+      <tr><td><code>--password</code></td><td>共享密钥</td></tr>
+      <tr><td><code>--mode</code></td><td>分配模式（须与 server 一致）</td></tr>
+      <tr><td><code>--port</code></td><td>指定公网端口（client 模式）</td></tr>
+      <tr><td><code>--target</code></td><td>透明转发目标 <code>host:port</code>（与 --proto / --config / --udp 互斥）</td></tr>
+      <tr><td><code>--udp</code></td><td>UDP 穿透（目标为本地 UDP 服务）</td></tr>
+      <tr><td><code>--domain</code></td><td>vhost 域名注册</td></tr>
+      <tr><td><code>--group</code></td><td>负载均衡组名</td></tr>
+      <tr><td><code>--transport</code></td><td>tcp / kcp / quic / tls / mtls / ws / wss（须与 server 一致）</td></tr>
+      <tr><td><code>--tls-cert / --tls-key</code></td><td>客户端证书/私钥（mtls 必填）</td></tr>
+      <tr><td><code>--tls-ca / --tls-insecure</code></td><td>信任的服务端 CA / 跳过校验（自签测试）</td></tr>
+      <tr><td><code>--oidc-token</code></td><td>OIDC access token（server 启用 OIDC 时注册需携带）</td></tr>
+      <tr><td><code>--tcpmux-target</code></td><td>TCPMUX CONNECT 目标（配合 server --tcpmux）</td></tr>
+      <tr><td><code>--mark</code></td><td>socket 标记（gost mark/so_mark，Linux 策略路由）</td></tr>
+      <tr><td><code>--sniffing</code></td><td>嗅探首包 HTTP Host / TLS SNI 并记录日志（gost sniffing）</td></tr>
+      <tr><td><code>--proto</code></td><td>协议模式：socks5/socks4/auto/http/http2/https/ss/ss2/ssr/trojan/vmess/vless/sni/file</td></tr>
+      <tr><td><code>--config</code></td><td>Router 编排 YAML（SOCKS5 入口 + 分流/选链）</td></tr>
+      <tr><td><code>--user / --users / --pass</code></td><td>认证（socks5/auto/http）</td></tr>
+      <tr><td><code>--method / --proxy-password / --uuid</code></td><td>密码代理参数（ss/ss2/ssr/trojan/vmess/vless）</td></tr>
+      <tr><td><code>--obfs / --ssr-proto</code></td><td>SSR 混淆与协议插件</td></tr>
+      <tr><td><code>--cert / --key / --http1</code></td><td>TLS（https/trojan）</td></tr>
+      <tr><td><code>--dir</code></td><td>file 服务根目录</td></tr>
+      <tr><td><code>--routes</code></td><td>SNI 路由 YAML</td></tr>
+    </table>
+
+    <!-- ========== 9 bench ========== -->
+    <h2 id="bench">9. 性能测试</h2>
+    <p>内置 bench 工具：起 echo 目标后测延迟与吞吐（可经代理，可选传输层）。</p>
+    <pre><code># 1. 起 echo 服务器（目标）
+tunnel_proxy bench echo -l 0.0.0.0:9000
+# 2. 测延迟（经 SOCKS5 代理，100 次）
+tunnel_proxy bench ping -s 127.0.0.1:1080 -e 127.0.0.1:9000
+# 3. 测吞吐（5 秒）
+tunnel_proxy bench tput -s 127.0.0.1:1080 -e 127.0.0.1:9000 -d 5
+# 传输层可选 tcp / ws / quic（-T）</code></pre>
+    <p><strong>实测参考（2026-08-29 远程 NAT 联合测试）</strong>：</p>
+    <ul>
+      <li>本地内核链路：SOCKS5 吞吐 <strong>582–661 MB/s</strong>，延迟平均 0.21ms（P99 0.48ms），300 并发连接全通过；mux 单连接 200 并发流全通过。</li>
+      <li>公网穿透（经远程 pf + 云 NAT 网关）：100 并发连接全通过，RTT 平均 104–118ms（物理链路 56ms，穿透开销约 6ms）；吞吐受 NAT 网关带宽限速，非本项目瓶颈。</li>
+      <li>稳定性：长连接 30s 正常、断线自动重连 2s 恢复、HA failover 主备自动切换均通过。</li>
+    </ul>
+    <p>完整测试报告：<a href="../docs/test-report-2026-08-29.md" class="inline">docs/test-report-2026-08-29.md</a>。</p>
+
+    <!-- ========== 10 WG ========== -->
+    <h2 id="wg">10. WireGuard</h2>
+    <p>boringtun 真实实现的 WireGuard（标准 Noise IK 握手 + chacha20poly1305 数据面 + 计数器）。密钥为 WireGuard 标准 base64 格式。</p>
+    <pre><code># 1. 生成密钥对
+tunnel_proxy wg-keygen
+#    PrivateKey: xxx    PublicKey: yyy
+
+# 2. 服务器（UDP 监听，转发到固定目标；-k 服务器私钥，-p 客户端公钥）
+tunnel_proxy wg -l 0.0.0.0:29500 -k &lt;服务器私钥&gt; -p &lt;客户端公钥&gt; -t 127.0.0.1:80
+
+# 3. 客户端（stdio 中继；-k 客户端私钥，-p 服务器公钥）
+tunnel_proxy wgclient -s server:29500 -k &lt;客户端私钥&gt; -p &lt;服务器公钥&gt;
+echo "hello" | tunnel_proxy wgclient -s 127.0.0.1:29500 -k &lt;客户端私钥&gt; -p &lt;服务器公钥&gt;</code></pre>
+
+    <!-- ========== 11 FAQ ========== -->
+    <h2 id="faq">11. 常见问题</h2>
+    <h3>Q：内网穿透连不上公网端口？</h3>
+    <p>确认 server 端口池在防火墙放行、client 的 <code>--mode</code> 与 server 一致、<code>--password</code> 密钥相同。查看 client 日志（<code>RUST_LOG=debug</code>）确认是否完成注册。</p>
+    <h3>Q：vhost 访问返回 404 / 直接断开？</h3>
+    <p>域名未注册。检查 <code>pfclient --domain</code> 域名拼写与访问的 Host/SNI 完全一致。</p>
+    <h3>Q：KCP 模式握手失败？</h3>
+    <p>确认 server 与 client 的 <code>--transport</code> 一致；UDP 端口未被防火墙拦截。</p>
+    <h3>Q：HTTPS 证书告警？</h3>
+    <p>缺省使用自签证书，客户端需 <code>--proxy-insecure</code> 跳过校验；生产请用 <code>--cert/--key</code> 指定受信任证书。</p>
+    <h3>Q：如何让配置改动生效？</h3>
+    <p><code>run</code> 加 <code>--reload</code> 自动轮询配置文件重载，或 <code>POST /api/reload</code> 手动触发。</p>
+
+    <!-- ========== 12 质量 ========== -->
+    <h2 id="quality">12. 质量与文档</h2>
+    <p>质量门禁（CI 强制）：clippy 0 warning、fmt 0 diff、215 单元测试全绿、e2e 脚本实测。</p>
+    <pre><code>cargo clippy --all-targets
+cargo fmt --check
+cargo test -p tunnel-proxy-core --lib</code></pre>
+    <p>更多资料：</p>
+    <ul>
+      <li><a href="../docs/test-report-2026-08-29.md" class="inline">test-report-2026-08-29.md</a> — 全功能测试报告（远程 NAT 实测）</li>
+      <li><a href="../_planning/GAP-ANALYSIS.md" class="inline">GAP-ANALYSIS.md</a> — gost/frp 能力覆盖矩阵</li>
+      <li><a href="../docs/README.md" class="inline">docs/README.md</a> — 快速开始</li>
+      <li><a href="../docs/protocols.md" class="inline">docs/protocols.md</a> — 协议与传输详解（含反向穿透）</li>
+      <li><a href="../docs/configuration.md" class="inline">docs/configuration.md</a> — Router/Chain/Node 配置</li>
+      <li><a href="../docs/api.md" class="inline">docs/api.md</a> — HTTP 控制接口</li>
+      <li><a href="../docs/deployment.md" class="inline">docs/deployment.md</a> — 部署与运维</li>
+    </ul>
+  </article>
+</div>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div>
+      <p class="footer-brand">▣ tunnel_proxy_rs</p>
+      <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
+    </div>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 215 单元测试全绿</p>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+<script>
+(function () {
+  var toc = document.getElementById("toc");
+  var links = toc.querySelectorAll("a[href^='#']");
+  var sections = [];
+  links.forEach(function (a) {
+    var el = document.querySelector(a.getAttribute("href"));
+    if (el) sections.push({ id: a.getAttribute("href"), el: el, link: a });
+  });
+  function onScroll() {
+    var pos = window.scrollY + 120;
+    var current = sections[0];
+    for (var i = 0; i < sections.length; i++) {
+      if (sections[i].el.offsetTop <= pos) current = sections[i];
+      else break;
+    }
+    links.forEach(function (a) { a.classList.remove("active"); });
+    if (current) current.link.classList.add("active");
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>

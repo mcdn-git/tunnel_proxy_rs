@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>常见问题 FAQ — tunnel_proxy_rs</title>
+<meta name="description" content="tunnel_proxy_rs 常见问题：代理连接、反向穿透 pf、虚拟主机、传输层、TUN 透明代理、性能与安全。">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-logo">▣</span>
+      <span class="brand-name">tunnel_proxy_rs</span>
+    </a>
+    <nav class="nav-links">
+      <a href="index.html#features">特性</a>
+      <a href="index.html#pf">反向穿透</a>
+      <a href="tutorial.html">教程</a>
+      <a href="reference.html">参考</a>
+      <a href="concepts.html">概念</a>
+      <a href="faq.html">FAQ</a>
+      <a class="nav-cta" href="install.html">安装</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" aria-label="菜单">☰</button>
+  </div>
+</header>
+
+<div class="tutorial-layout">
+  <aside class="toc" id="toc">
+    <p class="toc-title">目录</p>
+    <a class="toc-grp" href="#general">1. 通用</a>
+    <a class="toc-grp" href="#proxy">2. 正向代理</a>
+    <a class="toc-grp" href="#pf">3. 反向穿透 pf</a>
+    <a class="toc-grp" href="#vhost">4. 虚拟主机</a>
+    <a class="toc-grp" href="#transport">5. 传输层</a>
+    <a class="toc-grp" href="#tun">6. TUN 透明代理</a>
+    <a class="toc-grp" href="#security">7. 安全与认证</a>
+    <a class="toc-grp" href="#perf">8. 性能</a>
+    <a class="toc-grp" href="#platform">9. 平台相关</a>
+  </aside>
+
+  <article class="doc">
+    <h1>常见问题 FAQ</h1>
+    <p class="doc-sub">按使用场景分类排查。所有答案与当前实现一一核对。</p>
+
+    <h2 id="general">1. 通用</h2>
+    <h3>Q：二进制怎么拿？</h3>
+    <p>仓库未发布预编译二进制。源码构建见 <a class="inline" href="install.html">安装指南</a>：<code>cargo build --release</code> 得到 <code>target/release/tunnel_proxy</code>。</p>
+
+    <h3>Q：如何查看日志排查问题？</h3>
+    <p>用 <code>RUST_LOG</code> 控制日志级别（默认 info）：</p>
+<pre><code>RUST_LOG=debug tunnel_proxy socks5 -l 0.0.0.0:1080   # 详细日志（Linux/macOS）
+$env:RUST_LOG="debug"; tunnel_proxy socks5 -l 0.0.0.0:1080   # Windows PowerShell</code></pre>
+
+    <h3>Q：配置文件支持什么格式？</h3>
+    <p>YAML（Router 编排 <code>run -C router.yaml</code>、链 <code>chain</code>、SNI 路由）。<code>--reload</code> 轮询配置文件 mtime 自动热重载，或 <code>POST /api/reload</code> 手动触发。</p>
+
+    <h2 id="proxy">2. 正向代理</h2>
+    <h3>Q：SOCKS5 代理需要认证吗？</h3>
+    <p>默认无需认证。加 <code>--user user --pass pass</code> 开启单用户认证，或 <code>--users user1:pass1</code>（可重复）开启多用户。</p>
+
+    <h3>Q：curl 走代理报错？</h3>
+<pre><code># SOCKS5
+curl -x socks5h://127.0.0.1:1080 https://example.com
+# HTTP
+curl -x http://127.0.0.1:8080 https://example.com
+# 走 HTTP/2 明文（h2c）需特殊客户端（curl --http2 需 TLS）；可用内置 h2client 验证</code></pre>
+
+    <h3>Q：SS/SSR 加密方式支持哪些？</h3>
+    <p>SS：aes-128-gcm / aes-256-gcm / chacha20-ietf-poly1305；SS2：2022-blake3-aes-256-gcm 等；SSR：aes-128-cfb / aes-256-cfb 等 + 混淆（plain/http_simple/http_post）+ 协议插件（origin/auth_aes128_md5/auth_sha1_v4）。</p>
+
+    <h2 id="pf">3. 反向穿透 pf</h2>
+    <h3>Q：内网穿透连不上公网端口？</h3>
+    <p>① server 端口池在防火墙放行；② client 的 <code>--mode</code> 与 server 一致；③ <code>--password</code> 密钥相同；④ client 日志（<code>RUST_LOG=debug</code>）确认完成注册（出现「隧道已建立」）。</p>
+
+    <h3>Q：分配模式怎么选？</h3>
+    <p>三模式：<code>random</code>（server 端口池随机分配，默认）、<code>fixed</code>（server <code>--port</code> 固定）、<code>client</code>（client <code>--port</code> 指定，server 校验在 <code>--pool</code> 内且未占用）。</p>
+
+    <h3>Q：如何让内网服务不暴露公网端口？（STCP）</h3>
+    <p>目标 client 用 <code>--stcp-server svc1 --stcp-secret key1 --target 127.0.0.1:80</code> 注册（不占公网端口）；访问方 client 用 <code>--stcp-server svc1 --stcp-secret key1 --stcp-listen 127.0.0.1:9000</code> 本地监听，连接经 server 按密钥匹配中转。</p>
+
+    <h3>Q：P2P 直连（XTCP）怎么用？</h3>
+    <p>目标注册 <code>--xtcp-server xt1 --xtcp-secret key1 --xtcp-punch &lt;打洞地址&gt; --target 127.0.0.1:80</code>；访问方 <code>--xtcp-server xt1 --xtcp-secret key1 --xtcp-listen 127.0.0.1:9000</code>。访问方先直连打洞地址（1.5s 超时），失败自动 fallback 经 server 中转。真实 NAT 环境下打洞地址需预测（frp 标准做法）。</p>
+
+    <h3>Q：用标准 SSH 客户端做反向隧道？</h3>
+    <p>pfserver 加 <code>--ssh-gateway 0.0.0.0:2222 --ssh-gateway-user u --ssh-gateway-pass p</code>，然后内网机器执行 <code>ssh -R 7000:127.0.0.1:80 u@server</code>，公网 7000 即转发到该机 80。</p>
+
+    <h3>Q：公网 server 挂了怎么办？（HA）</h3>
+    <p>pfclient 加 <code>--server-b server-b:7000</code>：主 server 会话结束自动切换备，指数退避重连。</p>
+
+    <h2 id="vhost">4. 虚拟主机</h2>
+    <h3>Q：vhost 访问返回 404 / 直接断开？</h3>
+    <p>域名未注册。检查 <code>pfclient --domain</code> 域名拼写与访问的 Host/SNI 完全一致。HTTP 未注册域名返回 404；HTTPS/HTTP3 未注册直接断开（TLS 无法发明文错误）。</p>
+
+    <h3>Q：vhost 需要认证吗？</h3>
+    <p>client 注册时加 <code>--basic-auth user:pass</code>，浏览器访问该域名时弹 Basic 认证。Host 改写用 <code>--host-rewrite internal.local</code>，路径前缀路由用 <code>--path-prefix /api</code>。</p>
+
+    <h2 id="transport">5. 传输层</h2>
+    <h3>Q：KCP 模式握手失败？</h3>
+    <p>确认 server 与 client 的 <code>--transport</code> 一致；UDP 端口未被防火墙拦截。KCP 在 UDP 上跑可靠流，弱网/丢包链路更稳，可开 FEC（<code>--fec-data/--fec-parity</code>）。</p>
+
+    <h3>Q：pf 隧道支持哪些承载？</h3>
+    <p>tcp / kcp / quic / tls / mtls / ws / wss 七种（<code>--transport</code>）。tls/mtls 隧道流量加密，ws/wss 为 WebSocket 承载；mtls 服务端用 <code>--tls-client-ca</code> 要求客户端证书。</p>
+
+    <h2 id="tun">6. TUN 透明代理</h2>
+    <h3>Q：tun 命令启动失败？</h3>
+    <p>需要管理员/root 权限 + 虚拟网卡驱动：Linux <code>/dev/net/tun</code>、macOS 系统扩展、Windows Wintun。非 Linux 的 redirect/redu 透明代理自动回退 TUN 实现，同样需要上述前置。</p>
+
+    <h3>Q：tun2socks 怎么用？</h3>
+<pre><code>sudo tunnel_proxy tun2socks --address 10.0.0.1 -x socks5://127.0.0.1:1080
+# 然后把本机默认路由指向 10.0.0.1 网卡，全部流量经 SOCKS 出口</code></pre>
+
+    <h2 id="security">7. 安全与认证</h2>
+    <h3>Q：HTTPS 证书告警？</h3>
+    <p>https/trojan 缺省用自签证书，客户端需 <code>--proxy-insecure</code> 跳过校验（仅测试）；生产用 <code>--cert/--key</code> 指定受信任证书。</p>
+
+    <h3>Q：pfserver 支持 OIDC 认证吗？</h3>
+    <p>支持（frp auth.method=oidc 语义）：server 配 <code>--oidc-secret/--oidc-issuer/--oidc-audience</code>，client 注册须携带 <code>--oidc-token</code>（HS256 签名校验 iss/aud/exp）。</p>
+
+    <h3>Q：怎么给 pfserver 加管理面板认证？</h3>
+    <p><code>--web-server 0.0.0.0:7500 --web-user admin --web-pass secret</code>，访问面板与 /metrics 需 BasicAuth。</p>
+
+    <h2 id="perf">8. 性能</h2>
+    <h3>Q：怎么压测？</h3>
+<pre><code>tunnel_proxy bench echo -l 127.0.0.1:9000          # 目标
+tunnel_proxy bench ping -s 127.0.0.1:1080 -e 127.0.0.1:9000   # 延迟
+tunnel_proxy bench tput -s 127.0.0.1:1080 -e 127.0.0.1:9000 -d 5   # 吞吐
+# 传输层可选 tcp / ws / quic（-T）</code></pre>
+    <p>实测参考（2026-08-29 远程 NAT 联合测试）：本地 SOCKS5 吞吐 582–661 MB/s、
+    延迟平均 0.21ms（P99 0.48ms）、300 并发全通过；公网穿透 100 并发全通过、
+    RTT 104–118ms。完整报告见 <a href="../docs/test-report-2026-08-29.md" class="inline">docs/test-report-2026-08-29.md</a>。</p>
+
+    <h3>Q：如何限制带宽？</h3>
+    <p>pfserver <code>--bandwidth-limit 1MB</code>（支持 1KB/500KB/1MB 等单位），作用于每条公网连接下载方向。</p>
+
+    <h3>Q：可以调优哪些运行参数？</h3>
+    <p>pf 内网穿透与 mux/KCP 数据面参数均可通过 CLI 覆盖默认值：</p>
+<pre><code># pfserver：控制流读超时（90s）/ 头解析超时（15s）/ UDP 应答（5s）
+tunnel_proxy pfserver ... --server-read-timeout 60 --parse-timeout 5 --udp-response-timeout 8
+# pfclient：心跳间隔（30s）/ 应答超时（5s）/ 建连超时（15s）/ 重连退避（1s→60s）
+tunnel_proxy pfclient ... --heartbeat-interval 15 --heartbeat-timeout 8 --reconnect-backoff 2
+# 两侧：mux 单流窗口（KiB）/ 并发流上限 / 数据通道容量
+tunnel_proxy pfserver ... --mux-window 2048 --mux-max-streams 8192 --mux-tx-capacity 65536
+# KCP 传输：重传判死次数 / 空闲会话回收
+tunnel_proxy kcp ... --dead-link 30
+</code></pre>
+    <p>完整参数表见 <code>docs/configuration.md</code> §8 运行参数。</p>
+
+    <h2 id="platform">9. 平台相关</h2>
+    <h3>Q：Windows 上有什么限制？</h3>
+    <p>无功能限制（三平台对齐）。网络命名空间（netns）仅 Linux 支持（gost 同款），其余平台启动时警告忽略。透明代理需管理员 + Wintun。</p>
+
+    <h3>Q：redirect 透明代理在非 Linux 平台怎么工作？</h3>
+    <p>Linux 用 iptables REDIRECT 内核重定向；macOS/Windows 自动切换到 TUN 透明代理（<code>TunServer</code>），行为一致、性能略低于内核 splice。</p>
+
+  </article>
+</div>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div>
+      <p class="footer-brand">▣ tunnel_proxy_rs</p>
+      <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
+    </div>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 215 单元测试全绿</p>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>
