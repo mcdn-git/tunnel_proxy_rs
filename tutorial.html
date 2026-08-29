@@ -92,7 +92,7 @@
     <h2 id="scenarios">0. 场景速查（先看这里）</h2>
     <p>按「你想做什么」选择场景，命令已按 <b>公网端 → 内网端 → 客户端验证</b> 完整给出，可直接复制。每个场景末尾标注对应详细章节。</p>
 
-    <h3 id="scenario-proxy">场景 A · 本机代理上网（科学上网 / 突破访问限制）</h3>
+    <h3 id="scenario-proxy">场景 A · 本机代理上网</h3>
     <p>在本机起一个 SOCKS5 代理，浏览器/命令行都走它：</p>
 <pre><code># ① 启动 SOCKS5 代理（本机监听）
 tunnel_proxy socks5 --listen 0.0.0.0:1080
@@ -307,7 +307,7 @@ tunnel_proxy ssr -l 0.0.0.0:8389 -m aes-256-cfb -k mypassword \
     <pre><code>tunnel_proxy ssu -l 0.0.0.0:8388 -m aes-256-gcm -k mypassword</code></pre>
 
     <h3 id="proxy-advanced">Trojan / Vmess / Vless</h3>
-    <p><b>Trojan</b>：TLS 包裹的 Trojan 协议，流量特征接近 HTTPS，抗封锁能力强。</p>
+    <p><b>Trojan</b>：TLS 包裹的 Trojan 协议，流量特征接近 HTTPS。</p>
     <pre><code>tunnel_proxy trojan -l 0.0.0.0:8443 -k mypassword
 # 验证（需 TLS 客户端）
 curl -x https://mypassword@127.0.0.1:8443 --proxy-insecure https://example.com</code></pre>

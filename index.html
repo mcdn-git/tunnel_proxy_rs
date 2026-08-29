@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>tunnel_proxy_rs — 全协议代理内核 · 内网穿透</title>
-<meta name="description" content="用 Rust 编写的高性能代理内核：100% 覆盖 gost v2/v3 协议、传输与编排，并原生实现 frp 级反向穿透（TCP/UDP/vhost 全家族/负载均衡/KCP·QUIC 承载）。单一二进制，三平台可用。">
+<meta name="description" content="用 Rust 编写的高性能代理内核：覆盖主流代理协议、传输与编排能力，并原生实现内网穿透（TCP/UDP/vhost 全家族/负载均衡/KCP·QUIC 承载）。单一二进制，三平台可用。">
 <link rel="stylesheet" href="css/style.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕳️</text></svg>">
 </head>
@@ -43,10 +43,11 @@
       <span class="gradient-text">全协议代理内核，<br>内网穿透</span>
     </h1>
     <p class="hero-sub">
-      tunnel_proxy_rs 是纯 Rust 编写的高性能代理内核：<strong>100% 逻辑覆盖 gost v2/v3</strong>
-      的协议、传输与编排组件；同时原生实现 <strong>frp 级反向穿透</strong>——
-      TCP/UDP 端口映射、HTTP/HTTPS/HTTP3 虚拟主机、负载均衡、KCP/QUIC 承载。
-      单进程、低消耗、高并发。
+      tunnel_proxy_rs 是纯 Rust 编写的高性能代理内核：<strong>覆盖主流代理协议</strong>
+      （HTTP / SOCKS / SS / Trojan / Vmess / Vless 等）<strong>与传输层</strong>
+      （TCP / UDP / QUIC / KCP / WebSocket / mTLS 等）；同时原生实现
+      <strong>内网穿透</strong>——TCP/UDP 端口映射、HTTP/HTTPS/HTTP3 虚拟主机、
+      负载均衡、KCP/QUIC 承载。单进程、低消耗、高并发。
     </p>
     <div class="hero-actions">
       <a class="btn btn-primary" href="tutorial.html">查看完整教程</a>
@@ -320,7 +321,7 @@ tunnel_proxy pfclient --server server:7000 --password mykey --target 127.0.0.1:8
       <div class="card compare-card">
         <h3>vs gost</h3>
         <ul>
-          <li><span class="ok">✔</span> 协议 / 传输 / 组件 100% 逻辑覆盖</li>
+          <li><span class="ok">✔</span> 协议 / 传输 / 组件主体能力覆盖</li>
           <li><span class="ok">✔</span> SSR 全协议 × 混淆组合（含 auth_sha1_v4）</li>
           <li><span class="ok">✔</span> WireGuard 真实实现（boringtun）</li>
           <li><span class="plus">＋</span> 反向穿透 pf（内网穿透）</li>
