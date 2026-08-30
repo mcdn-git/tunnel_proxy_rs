@@ -260,12 +260,14 @@ webhook:               # observer 事件回调
     <p>RouterApiServer（<code>run --api 127.0.0.1:18085</code>）暴露：</p>
     <table>
       <tr><th>端点</th><th>方法</th><th>说明</th></tr>
-      <tr><td><code>/</code></td><td>GET</td><td>Web UI 控制台</td></tr>
-      <tr><td><code>/api/status</code></td><td>GET</td><td>服务/链/命中统计 JSON</td></tr>
-      <tr><td><code>/api/reload</code></td><td>POST</td><td>热重载配置</td></tr>
+      <tr><td><code>/</code>、<code>/ui</code></td><td>GET</td><td>内嵌 Web 仪表盘（HTML）</td></tr>
+      <tr><td><code>/api</code></td><td>GET</td><td>API 服务信息 JSON</td></tr>
+      <tr><td><code>/metrics</code></td><td>GET</td><td>运行指标（默认 JSON；<code>Accept: text/plain</code> 为 Prometheus 文本）</td></tr>
+      <tr><td><code>/metrics/prometheus</code></td><td>GET</td><td>始终 Prometheus 文本</td></tr>
+      <tr><td><code>/status</code></td><td>GET</td><td>完整状态（指标 + 链信息 + 策略）</td></tr>
+      <tr><td><code>/api/reload</code></td><td>POST</td><td>热重载配置（需 <code>--reload</code> 启动）</td></tr>
       <tr><td><code>/api/services</code></td><td>GET/POST</td><td>动态服务列表 / 启动</td></tr>
       <tr><td><code>/api/services/{name}</code></td><td>DELETE</td><td>停止动态服务</td></tr>
-      <tr><td><code>/metrics</code></td><td>GET</td><td>Prometheus 文本</td></tr>
     </table>
     <p>pfserver Dashboard（<code>--web-server</code>）暴露 <code>/</code>（HTML）、<code>/metrics</code>（<code>tunnel_proxy_pf_*</code>）、<code>/status</code>（JSON 含 ports/vhosts/vnets）。</p>
 
@@ -278,7 +280,7 @@ webhook:               # observer 事件回调
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 215 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 254 单元测试全绿</p>
   </div>
 </footer>
 

@@ -213,7 +213,7 @@ tunnel_proxy tc --token tp... --target 127.0.0.1:80
     <h3 id="install-env">环境要求</h3>
     <p>Rust 1.97+ 工具链（用 <code>rustup</code> 安装）。三平台均支持：Linux / macOS / Windows。Windows 下建议使用 <code>MSVC</code> 工具链。</p>
     <h3 id="install-build">构建</h3>
-    <pre><code>git clone &lt;仓库地址&gt;
+    <pre><code>git clone https://gitcode.com/Mosi45-git/tunnel_proxy_rs.git
 cd tunnel_proxy_rs
 cargo build --release
 # 产物：target/release/tunnel_proxy</code></pre>
@@ -699,14 +699,15 @@ echo "hello" | tunnel_proxy wgclient -s 127.0.0.1:29500 -k &lt;客户端私钥&g
 
     <!-- ========== 12 质量 ========== -->
     <h2 id="quality">12. 质量与文档</h2>
-    <p>质量门禁（CI 强制）：clippy 0 warning、fmt 0 diff、215 单元测试全绿、e2e 脚本实测。</p>
+    <p>质量门禁（CI 强制）：clippy 0 warning、fmt 0 diff、254 单元测试全绿、e2e 脚本实测。</p>
     <pre><code>cargo clippy --all-targets
 cargo fmt --check
 cargo test -p tunnel-proxy-core --lib</code></pre>
     <p>更多资料：</p>
     <ul>
       <li><a href="../docs/test-report-2026-08-29.md" class="inline">test-report-2026-08-29.md</a> — 全功能测试报告（远程 NAT 实测）</li>
-      <li><a href="../_planning/GAP-ANALYSIS.md" class="inline">GAP-ANALYSIS.md</a> — gost/frp 能力覆盖矩阵</li>
+      <li><a href="../docs/test-report-2026-08-30.md" class="inline">test-report-2026-08-30.md</a> — 生产级深度审计加固报告</li>
+      <li><a href="compare.html" class="inline">compare.html</a> — gost/frp 能力覆盖矩阵</li>
       <li><a href="../docs/README.md" class="inline">docs/README.md</a> — 快速开始</li>
       <li><a href="../docs/protocols.md" class="inline">docs/protocols.md</a> — 协议与传输详解（含反向穿透）</li>
       <li><a href="../docs/configuration.md" class="inline">docs/configuration.md</a> — Router/Chain/Node 配置</li>
@@ -722,7 +723,7 @@ cargo test -p tunnel-proxy-core --lib</code></pre>
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 215 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 254 单元测试全绿</p>
   </div>
 </footer>
 

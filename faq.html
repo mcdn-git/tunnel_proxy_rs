@@ -100,7 +100,7 @@ curl -x http://127.0.0.1:8080 https://example.com
 
     <h2 id="transport">5. 传输层</h2>
     <h3>Q：KCP 模式握手失败？</h3>
-    <p>确认 server 与 client 的 <code>--transport</code> 一致；UDP 端口未被防火墙拦截。KCP 在 UDP 上跑可靠流，弱网/丢包链路更稳，可开 FEC（<code>--fec-data/--fec-parity</code>）。</p>
+    <p>确认 server 与 client 的 <code>--transport</code> 一致；UDP 端口未被防火墙拦截。KCP 在 UDP 上跑可靠流，弱网/丢包链路更稳，可开 FEC（<code>--data-shards/--parity-shards</code>）。</p>
 
     <h3>Q：pf 隧道支持哪些承载？</h3>
     <p>tcp / kcp / quic / tls / mtls / ws / wss 七种（<code>--transport</code>）。tls/mtls 隧道流量加密，ws/wss 为 WebSocket 承载；mtls 服务端用 <code>--tls-client-ca</code> 要求客户端证书。</p>
@@ -165,7 +165,7 @@ tunnel_proxy kcp ... --dead-link 30
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 215 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 254 单元测试全绿</p>
   </div>
 </footer>
 

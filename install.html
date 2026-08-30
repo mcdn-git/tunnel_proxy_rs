@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>安装与构建 — tunnel_proxy_rs</title>
-<meta name="description" content="tunnel_proxy_rs 安装指南：Linux / macOS / Windows 三平台源码构建、Docker 容器化部署、系统服务与开机自启、卸载。">
+<meta name="description" content="tunnel_proxy_rs 安装指南：Linux / macOS / Windows 三平台源码构建、系统服务与开机自启、卸载。">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -37,17 +37,15 @@
     <a class="toc-grp" href="#build">2. 源码构建</a>
     <a class="toc-sub" href="#build-release">Release 构建</a>
     <a class="toc-sub" href="#build-gates">质量门禁</a>
-    <a class="toc-sub" href="#build-features">特性开关</a>
     <a class="toc-grp" href="#platform">3. 三平台说明</a>
     <a class="toc-sub" href="#platform-linux">Linux</a>
     <a class="toc-sub" href="#platform-macos">macOS</a>
     <a class="toc-sub" href="#platform-windows">Windows</a>
-    <a class="toc-grp" href="#docker">4. Docker</a>
-    <a class="toc-grp" href="#service">5. 系统服务</a>
+    <a class="toc-grp" href="#service">4. 系统服务</a>
     <a class="toc-sub" href="#service-systemd">systemd</a>
     <a class="toc-sub" href="#service-win">Windows 服务</a>
-    <a class="toc-grp" href="#verify">6. 验证安装</a>
-    <a class="toc-grp" href="#uninstall">7. 卸载</a>
+    <a class="toc-grp" href="#verify">5. 验证安装</a>
+    <a class="toc-grp" href="#uninstall">6. 卸载</a>
   </aside>
 
   <article class="doc">
@@ -56,23 +54,24 @@
 
     <h2 id="env">1. 环境要求</h2>
     <h3 id="env-rust">Rust 工具链</h3>
-    <p>需要 <b>Rust 1.75+</b>（工作区使用现代 async 生态：tokio / axum / rustls / quinn / boringtun）。推荐用 <a class="inline" href="https://rustup.rs/" target="_blank" rel="noopener">rustup</a> 管理工具链：</p>
+    <p>需要 <b>Rust 1.97+</b>（工作区声明 <code>rust-version = "1.97"</code>，edition 2024）。
+    推荐用 <a class="inline" href="https://rustup.rs/" target="_blank" rel="noopener">rustup</a> 管理工具链：</p>
 <pre><code>curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-rustc --version    # 确认版本 ≥ 1.75
+rustc --version    # 确认版本 ≥ 1.97
 cargo --version</code></pre>
 
     <h3 id="env-cc">C 编译器</h3>
     <p>部分依赖需要 C 编译器（ring / boringtun 的 C 部分、Windows Wintun 驱动的 FFI）：</p>
     <table>
       <tr><th>平台</th><th>要求</th><th>安装示例</th></tr>
-      <tr><td>Linux</td><td>gcc / clang + libc 头文件</td><td><code>apt install build-essential</code></td></tr>
+      <tr><td>Linux</td><td>gcc / clang + libc 头文件</td><td><code>apt install build-essential libudev-dev pkg-config protobuf-compiler cmake nasm</code></td></tr>
       <tr><td>macOS</td><td>Xcode Command Line Tools</td><td><code>xcode-select --install</code></td></tr>
       <tr><td>Windows</td><td>MSVC 生成工具</td><td>安装 Visual Studio Build Tools，勾选「使用 C++ 的桌面开发」</td></tr>
     </table>
 
     <h2 id="build">2. 源码构建</h2>
     <h3 id="build-release">Release 构建</h3>
-<pre><code>git clone &lt;repo-url&gt;
+<pre><code>git clone https://gitcode.com/Mosi45-git/tunnel_proxy_rs.git
 cd tunnel_proxy_rs
 cargo build --release
 # 产物：target/release/tunnel_proxy（Windows 为 tunnel_proxy.exe）</code></pre>
@@ -81,17 +80,11 @@ cargo build --release
     <h3 id="build-gates">质量门禁（CI 强制）</h3>
     <p>提交前仓库在 <code>.github/workflows/ci.yml</code> 对三平台矩阵强制执行以下门禁：</p>
 <pre><code>cargo fmt --check           # 0 diff
-cargo clippy --all-targets  # 0 warning
-cargo test --workspace      # 全量测试全绿（当前 215 个）
+cargo clippy --workspace --all-targets -- -D warnings   # 0 warning
+cargo test --workspace      # 全量测试全绿（当前 254 个）
 cargo build --release       # 产物构建</code></pre>
-
-    <h3 id="build-features">特性开关</h3>
-    <p>核心 crate <code>tunnel-proxy-core</code> 提供特性开关，按需裁剪依赖：</p>
-    <table>
-      <tr><th>特性</th><th>说明</th><th>默认</th></tr>
-      <tr><td><code>default</code></td><td>全部传输与协议（KCP / QUIC / WG / obfs 等）</td><td>开</td></tr>
-      <tr><td><code>embedding</code></td><td>仅嵌入式 API 所需子集（无 CLI）</td><td>关</td></tr>
-    </table>
+    <p>另有独立 security-scan job（ubuntu）：<code>cargo audit</code>（RustSec 漏洞库）+
+    <code>cargo deny check</code>（advisories/licenses/bans/sources）+ gitleaks（密钥泄漏）。</p>
 
     <h2 id="platform">3. 三平台说明</h2>
     <h3 id="platform-linux">Linux</h3>
@@ -102,21 +95,13 @@ cargo build --release       # 产物构建</code></pre>
 
     <h3 id="platform-windows">Windows</h3>
     <p>全功能可用：Unix socket 与 named pipe 统一（Runix）、串口、WireGuard、TUN/TAP（需 Wintun 驱动 + 管理员）、ICMP（用 Win32 Winsock API）。<b>全平台对齐是最高准则</b>——无「仅某平台可用」的对外功能。</p>
-    <p class="note">已知平台差异（2026-08-29 实测）：① <code>sshd</code>（russh server）在 Windows 绑定监听报 <code>os error 10013</code>（russh 库 Windows socket 兼容限制），请部署到 Linux/macOS，或 Windows 用 <code>sshtunnel</code> 客户端连远程 Linux <code>sshd</code>；② <code>runix</code>（named pipe）数据往返正常，但 Windows named pipe 无 POSIX half-close 语义，stdio 客户端在数据完成后可能不自动退出。详见 <a href="../docs/platform-support.md" class="inline">docs/platform-support.md</a>。</p>
+    <p class="note">已知平台差异（2026-08-29 实测）：Windows 系统保留端口段（WSL2/Hyper-V WinNAT 动态保留，
+    用 <code>netsh interface ipv4 show excludedportrange protocol=tcp</code> 查询）内的端口绑定会报
+    <code>os error 10013</code>——这是 Windows 系统行为（非代码问题），换用未保留端口即可。
+    另外 Windows named pipe（Runix）无 POSIX half-close 语义，stdio 客户端在数据完成后可能不自动退出。
+    详见 <a href="../docs/platform-support.md" class="inline">docs/platform-support.md</a>。</p>
 
-    <h2 id="docker">4. Docker</h2>
-<pre><code># 构建镜像（多阶段：builder 编译 + 运行镜像）
-docker build -t tunnel_proxy_rs .
-
-# 运行 SOCKS5 代理
-docker run -d -p 1080:1080 tunnel_proxy_rs socks5 -l 0.0.0.0:1080
-
-# 运行反向穿透 server（需暴露隧道端口与公网端口池）
-docker run -d -p 7000:7000 -p 7001-7010:7001-7010 tunnel_proxy_rs \
-  pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010</code></pre>
-    <div class="hint">容器内 TUN / 串口 / netns 等设备功能需要 <code>--cap-add NET_ADMIN --device /dev/net/tun</code> 等特权；纯 TCP/UDP 代理无需。</div>
-
-    <h2 id="service">5. 系统服务</h2>
+    <h2 id="service">4. 系统服务</h2>
     <h3 id="service-systemd">systemd（Linux）</h3>
 <pre><code># /etc/systemd/system/tunnel-proxy.service
 [Unit]
@@ -141,7 +126,7 @@ nssm set tunnel_proxy AppStdout C:\tools\out.log
 nssm set tunnel_proxy AppStderr C:\tools\err.log
 nssm start tunnel_proxy</code></pre>
 
-    <h2 id="verify">6. 验证安装</h2>
+    <h2 id="verify">5. 验证安装</h2>
 <pre><code># 版本与子命令
 tunnel_proxy --help
 
@@ -153,7 +138,7 @@ curl -x socks5h://127.0.0.1:1080 https://example.com
 tunnel_proxy bench echo -l 127.0.0.1:9000   # 终端 1：echo 目标
 tunnel_proxy bench ping -s 127.0.0.1:1080 -e 127.0.0.1:9000   # 终端 2：经代理测延迟</code></pre>
 
-    <h2 id="uninstall">7. 卸载</h2>
+    <h2 id="uninstall">6. 卸载</h2>
     <p>源码构建无全局写入，删除源码目录与 <code>target/</code> 即完成卸载；若配置了系统服务，先停服务再删配置。</p>
 
   </article>
@@ -165,7 +150,7 @@ tunnel_proxy bench ping -s 127.0.0.1:1080 -e 127.0.0.1:9000   # 终端 2：经�
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 215 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 254 单元测试全绿</p>
   </div>
 </footer>
 
