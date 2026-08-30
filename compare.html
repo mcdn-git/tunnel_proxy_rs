@@ -153,7 +153,7 @@
       <tr><td>XTCP 真实 NAT 打洞</td><td>⚠️</td><td>需双 NAT 环境实测（代码已实现直连+fallback）</td></tr>
       <tr><td>VirtualNet 数据面</td><td>⚠️</td><td>依赖 TUN 驱动 + 多端联调</td></tr>
       <tr><td>utls 字节级等价</td><td>⚠️</td><td>参数级近似，非 uTLS 字节级</td></tr>
-      <tr><td>官方互操作</td><td>⚠️</td><td>已实测：KCP ↔ kcp-go（<code>--endian little</code>）、SS ↔ gost（<code>--gost-ss</code> 双 salt）、Vless/Trojan ↔ xray。未实测：frp 官方协议（pf 为自研协议，语义对照）、vmess 与 xray AEAD 认证</td></tr>
+      <tr><td>官方互操作</td><td>⚠️</td><td>已实测：KCP ↔ kcp-go（<code>--endian little</code>）、SS ↔ gost（<code>--gost-ss</code> 双 salt）、Vless/Trojan/Vmess(AEAD) ↔ xray 26.3.27。未实测：frp 官方协议（pf 为自研协议，语义对照）</td></tr>
       <tr><td>WG IP 隧道互通</td><td>⚠️</td><td>需 TUN 设备做内核路由（密码学层已字节兼容）</td></tr>
     </table>
 
