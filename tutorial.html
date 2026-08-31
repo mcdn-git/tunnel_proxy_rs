@@ -43,6 +43,8 @@
     <a class="toc-sub" href="#scenario-p2p">I P2P 直连</a>
     <a class="toc-sub" href="#scenario-stcp">J 不暴露端口访问</a>
     <a class="toc-sub" href="#scenario-icmp">L 只放行 ICMP 的网络逃生</a>
+    <a class="toc-sub" href="#scenario-vnet">M 多机虚拟局域网（VNet）</a>
+    <a class="toc-sub" href="#scenario-connect">N 访问未公网 NAT 的 server 端口</a>
     <a class="toc-grp" href="#install">1. 安装与构建</a>
     <a class="toc-sub" href="#install-env">环境要求</a>
     <a class="toc-sub" href="#install-build">构建</a>
@@ -79,6 +81,7 @@
     <a class="toc-sub" href="#pf-group">负载均衡组</a>
     <a class="toc-sub" href="#pf-transport">KCP / QUIC 承载</a>
     <a class="toc-sub" href="#pf-proto">协议模式</a>
+    <a class="toc-sub" href="#pf-vnet">VNet 虚拟组网</a>
     <a class="toc-sub" href="#pf-params">参数全表</a>
     <a class="toc-grp" href="#bench">9. 性能测试</a>
     <a class="toc-grp" href="#wg">10. WireGuard</a>
@@ -225,6 +228,37 @@ echo "GET / HTTP/1.0\r\n\r\n" | sudo tunnel_proxy icmpclient -s server --id 7
 # ③ --id 0 为随机 ID（多客户端区分用固定 ID）</code></pre>
     <div class="hint">可靠性由 QUIC 重传保证，ICMP 报文本身允许丢失；客户端 ID 对齐 gost
     <code>icmp://server:ID</code> 语义。→ 详见 <a class="inline" href="#transport-icmp">4.1 ICMP 传输</a></div>
+
+    <h3 id="scenario-vnet">场景 M · 多机组成虚拟局域网（VNet，client 访问 server 内网资产）</h3>
+    <p>多台机器经公网 server 打通成一张虚拟局域网：任意 client 用虚拟 IP 直接访问其它
+    client 及其所在内网资产（ping / TCP / UDP 三层互通）——「局域网互相打通组成小型广域网」。</p>
+<pre><code># ① 公网 server：开启虚拟网络注册表
+tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010 --virtual-net
+
+# ② 各机器（root/管理员，创建 TUN 网卡加入虚拟网段）
+sudo tunnel_proxy vnet --server server:7000 --password mykey --virtual-ip 10.99.0.2
+# 另一台机器：
+sudo tunnel_proxy vnet --server server:7000 --password mykey --virtual-ip 10.99.0.3
+
+# ③ 互通验证（任一 client）
+ping 10.99.0.3                 # 三层互通
+curl http://10.99.0.3:80       # 访问其它 client / server 侧内网资产</code></pre>
+    <div class="hint">虚拟 IP 默认网段 10.99.0.0/16，可用 <code>--prefix</code>/<code>--netmask</code> 调整；
+    每个 client 的虚拟 IP 不能重复。UDP 承载（<code>--transport kcp</code>）在 NAT 后建议
+    <code>--heartbeat-interval 5</code> 保活 NAT 映射。→ 详见 <a class="inline" href="#pf-vnet">8.8 虚拟组网 VNet</a></div>
+
+    <h3 id="scenario-connect">场景 N · client 连接「未被公网 NAT」的 server 端口（反向访问内网）</h3>
+    <p>server 侧某个端口只有内网地址、没有公网映射。client 无需直连该端口，经穿透隧道
+    从公网访问端绕进去即可——这正是「双向服务」：不只把内网服务暴露到公网（场景 B），
+    也能从公网反向访问到内网未映射的端口。</p>
+<pre><code># ① 公网 server：fixed 模式固定公网端口
+tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --mode fixed --port 7001
+# ② 内网 client：把「未公网 NAT 的内网端口」注册到公网（如内网数据库 3306、内网 Web 80）
+tunnel_proxy pfclient --server server:7000 --password mykey --target 127.0.0.1:3306
+# ③ 任何位置的 client（公网/内网均可）：访问 server:7001 即到达内网 3306
+mysql -h server -P 7001 -u root -p</code></pre>
+    <div class="hint">server 所在网络完全无需给内网端口做 NAT 映射——穿透隧道的出口在内网 client
+    侧，内网端口对公网保持不可直连。→ 详见 <a class="inline" href="#pf-tcp">8.2 TCP 端口映射</a></div>
 
     <!-- ========== 1 安装 ========== -->
     <h2 id="install">1. 安装与构建</h2>
@@ -635,6 +669,27 @@ tunnel_proxy pfclient --server server:7000 --password mykey --proto vmess --uuid
 tunnel_proxy pfclient --server server:7000 --password mykey --proto ssr --method aes-256-cfb \
   --proxy-password xxx --obfs http_simple --ssr-proto auth_sha1_v4
 # 可用 proto：socks5/socks4/auto/http/http2/https/ss/ss2/ssr/trojan/vmess/vless/sni/file</code></pre>
+    <h3 id="pf-vnet">虚拟组网 VNet</h3>
+    <p>这是 pf 的「组网」能力（与「穿透」相对，构成<strong>双向服务</strong>）：server 开启
+    <code>--virtual-net</code> 后组织一个虚拟网段，多台机器各跑 <code>vnet</code>（创建 TUN
+    网卡、注册一个虚拟 IP）加入，任意 client 用虚拟 IP 直接访问其它 client 及其内网资产
+    （ping / TCP / UDP 三层互通）。数据经 pf mux 隧道由 server 按虚拟 IP 路由转发。</p>
+    <pre><code># 公网 server：启用虚拟网络注册表（须有 --pool，供 vnet 会话使用）
+tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010 --virtual-net
+
+# 机器 A / B / C（root/管理员）：各创建 TUN 网卡加入虚拟网段
+sudo tunnel_proxy vnet --server server:7000 --password mykey --virtual-ip 10.99.0.2
+sudo tunnel_proxy vnet --server server:7000 --password mykey --virtual-ip 10.99.0.3
+
+# 互通验证（机器 A）
+ping 10.99.0.3                     # 三层 ICMP 互通
+curl http://10.99.0.3:8080         # 访问其它机器上的服务
+# 甚至可以通过 vnet 访问 server 本机内网服务（route add 到虚拟网段后）</code></pre>
+    <div class="hint">vnet 参数：<code>--virtual-ip</code>（必填，唯一）/<code>--prefix</code>（默认
+    10.99.0.0/16）/<code>--netmask</code>/<code>--mtu</code>（1400）/<code>--name</code>（tpvnet）/
+    <code>--transport</code>（默认 tcp）。UDP 承载（kcp/quic）在 NAT 后建议
+    <code>--heartbeat-interval 5</code> 保活 NAT 映射。数据面经 server 中转（V1；P2P 直连为后续）。
+    → 详见 <a class="inline" href="../docs/protocols.md">docs/protocols.md</a></div>
     <h3 id="pf-params">参数全表</h3>
     <p><b>pfserver</b></p>
     <table>
@@ -652,6 +707,7 @@ tunnel_proxy pfclient --server server:7000 --password mykey --proto ssr --method
       <tr><td><code>--tls-client-ca</code></td><td>—</td><td>mTLS 客户端 CA（mtls 必填）</td></tr>
       <tr><td><code>--oidc-secret / --oidc-issuer / --oidc-audience</code></td><td>—</td><td>OIDC 认证（frp auth.method=oidc，HS256）</td></tr>
       <tr><td><code>--tcpmux</code></td><td>—</td><td>TCPMUX 单端口（frp tcpmux，CONNECT 目标路由）</td></tr>
+      <tr><td><code>--virtual-net</code></td><td>关</td><td>启用虚拟网络注册表（供 vnet 客户端注册虚拟 IP 组网）</td></tr>
       <tr><td><code>--mark</code></td><td>—</td><td>socket 标记（gost mark/so_mark，Linux 策略路由）</td></tr>
     </table>
     <p><b>pfclient</b></p>
@@ -680,6 +736,8 @@ tunnel_proxy pfclient --server server:7000 --password mykey --proto ssr --method
       <tr><td><code>--cert / --key / --http1</code></td><td>TLS（https/trojan）</td></tr>
       <tr><td><code>--dir</code></td><td>file 服务根目录</td></tr>
       <tr><td><code>--routes</code></td><td>SNI 路由 YAML</td></tr>
+      <tr><td><code>--heartbeat-interval</code></td><td>心跳间隔秒数（默认 30，vnet/UDP 承载建议 5）</td></tr>
+      <tr><td><code>--heartbeat-timeout</code></td><td>心跳应答超时秒数（默认 5）</td></tr>
     </table>
 
     <!-- ========== 9 bench ========== -->
@@ -729,7 +787,7 @@ echo "hello" | tunnel_proxy wgclient -s 127.0.0.1:29500 -k &lt;客户端私钥&g
 
     <!-- ========== 12 质量 ========== -->
     <h2 id="quality">12. 质量与文档</h2>
-    <p>质量门禁（CI 强制）：clippy 0 warning、fmt 0 diff、292 单元测试全绿、e2e 脚本实测。</p>
+    <p>质量门禁（CI 强制）：clippy 0 warning、fmt 0 diff、304 单元测试全绿、e2e 脚本实测。</p>
     <pre><code>cargo clippy --all-targets
 cargo fmt --check
 cargo test -p tunnel-proxy-core --lib</code></pre>
@@ -754,7 +812,7 @@ cargo test -p tunnel-proxy-core --lib</code></pre>
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 292 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 304 单元测试全绿</p>
   </div>
 </footer>
 

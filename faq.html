@@ -91,6 +91,22 @@ curl -x http://127.0.0.1:8080 https://example.com
     <h3>Q：公网 server 挂了怎么办？（HA）</h3>
     <p>pfclient 加 <code>--server-b server-b:7000</code>：主 server 会话结束自动切换备，指数退避重连。</p>
 
+    <h3>Q：怎么访问「未被公网 NAT」的 server 端口？（反向访问内网）</h3>
+    <p>穿透隧道的出口在内网 client 侧，内网端口对公网保持不可直连、无需任何 NAT 映射。
+    内网 client 用 <code>pfclient --target 127.0.0.1:&lt;内网端口&gt;</code> 注册，任何位置的
+    client 访问 <code>server:&lt;公网分配端口&gt;</code> 即到达该内网端口（场景 N）。</p>
+
+    <h3>Q：多台机器怎么组虚拟局域网？（VNet）</h3>
+    <p>server 加 <code>--virtual-net</code>，各机器（root/管理员）跑
+    <code>vnet --virtual-ip 10.99.0.x</code>（每台唯一）创建 TUN 网卡加入虚拟网段，之后用
+    虚拟 IP 直接互通（ping / TCP / UDP），可访问其它机器及其内网资产。UDP 承载
+    （<code>--transport kcp/quic</code>）在 NAT 后建议 <code>--heartbeat-interval 5</code> 保活。</p>
+
+    <h3>Q：vnet 启动失败 / 网卡不通？</h3>
+    <p>确认以 root/管理员运行（需要创建 TUN 网卡）；虚拟 IP 不能与其它 client 重复（冲突
+    server 返回 <code>reg-err</code>）；<code>--transport</code> 须与 server 一致；ping 用
+    <code>--prefix</code> 网段内的 IP。</p>
+
     <h2 id="vhost">4. 虚拟主机</h2>
     <h3>Q：vhost 访问返回 404 / 直接断开？</h3>
     <p>域名未注册。检查 <code>pfclient --domain</code> 域名拼写与访问的 Host/SNI 完全一致。HTTP 未注册域名返回 404；HTTPS/HTTP3 未注册直接断开（TLS 无法发明文错误）。</p>
@@ -168,7 +184,7 @@ tunnel_proxy kcp ... --dead-link 30
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 292 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 304 单元测试全绿</p>
   </div>
 </footer>
 

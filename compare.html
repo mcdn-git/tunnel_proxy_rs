@@ -107,7 +107,7 @@
       <tr><td>PROXY Protocol</td><td>✅</td><td>v1/v2 透传真实 IP</td></tr>
       <tr><td>Dashboard + Prometheus</td><td>✅</td><td>webServer 语义</td></tr>
       <tr><td>HTTP 插件（httpPlugins）</td><td>✅</td><td>事件回调</td></tr>
-      <tr><td>VirtualNet 虚拟网络</td><td>⚠️</td><td>注册表已实现；数据面依赖 TUN</td></tr>
+      <tr><td>VirtualNet 虚拟网络</td><td>✅</td><td>注册表 + 数据面（TUN 三层路由，跨机实测互通）</td></tr>
       <tr><td>多 server HA</td><td>✅</td><td>主失效自动切备</td></tr>
       <tr><td>插件（socks5/staticFile 等）</td><td>✅</td><td>协议模式覆盖</td></tr>
     </table>
@@ -166,7 +166,7 @@
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 292 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 304 单元测试全绿</p>
   </div>
 </footer>
 

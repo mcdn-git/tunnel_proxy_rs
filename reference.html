@@ -38,6 +38,7 @@
     <a class="toc-grp" href="#pf">5. 反向穿透 pf 全参数</a>
     <a class="toc-sub" href="#pf-server">pfserver</a>
     <a class="toc-sub" href="#pf-client">pfclient</a>
+    <a class="toc-sub" href="#pf-vnet">vnet（虚拟组网）</a>
     <a class="toc-grp" href="#tooling">6. 工具与服务</a>
     <a class="toc-grp" href="#router-cfg">7. Router 编排配置</a>
     <a class="toc-grp" href="#api">8. API 与指标</a>
@@ -208,6 +209,25 @@
       <tr><td><code>--mux-tx-capacity</code></td><td>mux 数据写通道容量（帧数，默认 32768）</td></tr>
     </table>
 
+    <h3 id="pf-vnet">vnet（虚拟组网客户端）</h3>
+    <p>本机创建 TUN 网卡加入 pfserver（<code>--virtual-net</code>）组织的虚拟网段，以虚拟 IP
+    与其他 vnet client 三层互通（ping / TCP / UDP）。需 root/管理员权限。</p>
+    <table>
+      <tr><th>参数</th><th>默认</th><th>说明</th></tr>
+      <tr><td><code>--server</code></td><td>必填</td><td>pfserver 地址</td></tr>
+      <tr><td><code>--password</code></td><td>必填</td><td>共享密钥（与 server 一致）</td></tr>
+      <tr><td><code>--virtual-ip</code></td><td>必填</td><td>本机虚拟 IP（如 10.99.0.2，须唯一）</td></tr>
+      <tr><td><code>--prefix</code></td><td><code>10.99.0.0</code></td><td>虚拟网段前缀</td></tr>
+      <tr><td><code>--netmask</code></td><td>按 prefix /16</td><td>网段掩码</td></tr>
+      <tr><td><code>--mtu</code></td><td><code>1400</code></td><td>TUN 网卡 MTU</td></tr>
+      <tr><td><code>--name</code></td><td><code>tpvnet</code></td><td>TUN 网卡名</td></tr>
+      <tr><td><code>--transport</code></td><td><code>tcp</code></td><td>承载（tcp/kcp/quic/tls/mtls/ws/wss/relay，与 server 一致）</td></tr>
+      <tr><td><code>--heartbeat-interval</code></td><td><code>30</code></td><td>心跳间隔（秒）；UDP 承载 NAT 后建议 5</td></tr>
+      <tr><td><code>--heartbeat-timeout</code></td><td><code>5</code></td><td>心跳应答超时（秒）</td></tr>
+    </table>
+    <p>server 需 <code>pfserver --virtual-net</code>；虚拟 IP 冲突返回 <code>reg-err</code>。
+    数据经 pf mux 隧道由 server 按虚拟 IP 路由转发（V1 中转；P2P 直连为后续）。</p>
+
     <h2 id="tooling">6. 工具与服务</h2>
     <table>
       <tr><th>子命令</th><th>功能</th><th>关键参数</th></tr>
@@ -280,7 +300,7 @@ webhook:               # observer 事件回调
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 292 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 304 单元测试全绿</p>
   </div>
 </footer>
 

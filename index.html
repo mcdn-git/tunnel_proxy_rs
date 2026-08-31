@@ -40,14 +40,16 @@
     <p class="hero-eyebrow">Rust · 单二进制 · 三平台</p>
     <h1 class="hero-title">
       一个二进制，<br>
-      <span class="gradient-text">全协议代理内核，<br>内网穿透</span>
+      <span class="gradient-text">不只能代理，<br>还能组网</span>
     </h1>
     <p class="hero-sub">
       tunnel_proxy_rs 是纯 Rust 编写的高性能代理内核：<strong>覆盖主流代理协议</strong>
       （HTTP / SOCKS / SS / Trojan / Vmess / Vless 等）<strong>与传输层</strong>
-      （TCP / UDP / QUIC / KCP / WebSocket / mTLS 等）；同时原生实现
-      <strong>内网穿透</strong>——TCP/UDP 端口映射、HTTP/HTTPS/HTTP3 虚拟主机、
-      负载均衡、KCP/QUIC 承载。单进程、低消耗、高并发。
+      （TCP / UDP / QUIC / KCP / WebSocket / mTLS 等）；原生实现
+      <strong>双向服务</strong>——既是内网穿透（TCP/UDP 端口映射、HTTP/HTTPS/HTTP3
+      虚拟主机、负载均衡、KCP/QUIC 承载），也能
+      <strong>虚拟组网 VNet</strong>（多机 TUN 网卡打通成一张虚拟局域网，client 经
+      虚拟 IP 访问其它机器及其内网资产）。单进程、低消耗、高并发。
     </p>
     <div class="hero-actions">
       <a class="btn btn-primary" href="tutorial.html">查看完整教程</a>
@@ -66,14 +68,18 @@
 
 <span class="c-dim"># 内网穿透：公网 server + 内网 client（frp 级）</span>
 <span class="c-fn">tunnel_proxy</span> <span class="c-key">pfserver</span> -l 0.0.0.0:7000 -k mykey -b 7001-7010
-<span class="c-fn">tunnel_proxy</span> <span class="c-key">pfclient</span> -s server:7000 -k mykey -t 127.0.0.1:80</code></pre>
+<span class="c-fn">tunnel_proxy</span> <span class="c-key">pfclient</span> -s server:7000 -k mykey -t 127.0.0.1:80
+
+<span class="c-dim"># 虚拟组网：多机 TUN 网卡互通（VNet）</span>
+<span class="c-fn">tunnel_proxy</span> <span class="c-key">pfserver</span> -l 0.0.0.0:7000 -k mykey -b 7001-7010 --virtual-net
+<span class="c-fn">sudo tunnel_proxy</span> <span class="c-key">vnet</span> -s server:7000 -k mykey --virtual-ip 10.99.0.2</code></pre>
       </div>
     </div>
     <div class="hero-stats">
       <div class="stat"><b data-count="18">0</b><span>代理协议</span></div>
       <div class="stat"><b data-count="20">0</b><span>传输层</span></div>
       <div class="stat"><b data-count="17">0</b><span>编排组件</span></div>
-      <div class="stat"><b data-count="292">0</b><span>单元测试全绿</span></div>
+      <div class="stat"><b data-count="304">0</b><span>单元测试全绿</span></div>
       <div class="stat"><b data-count="3">0</b><span>平台可用</span></div>
     </div>
   </div>
@@ -107,6 +113,11 @@
         <div class="card-icon">🕳️</div>
         <h3>反向穿透 pf</h3>
         <p>内网 client 主动连出穿透 NAT，frp 级能力：TCP/UDP 端口映射、HTTP/HTTPS/HTTP3 虚拟主机、负载均衡组、KCP/QUIC 传输承载，断线自动重连。</p>
+      </div>
+      <div class="card feature-card">
+        <div class="card-icon">🕸️</div>
+        <h3>虚拟组网 VNet</h3>
+        <p>pfserver + 多机 vnet（TUN 网卡 + 虚拟 IP）组成虚拟局域网，client 经虚拟 IP 三层互通（ping / TCP / UDP），把多个内网打通成一张新网络，直接访问其它机器及 server 侧内网资产。</p>
       </div>
       <div class="card feature-card">
         <div class="card-icon">📊</div>
@@ -197,9 +208,9 @@
 <section class="section section-pf" id="pf">
   <div class="container">
     <div class="section-head">
-      <p class="eyebrow">反向穿透</p>
-      <h2 class="section-title">内网穿透：端口映射与协议复用</h2>
-      <p class="section-desc">内网 client 主动连出（可穿 NAT），公网用户访问 server 分配端口即可触达内网服务。</p>
+      <p class="eyebrow">双向服务</p>
+      <h2 class="section-title">不只能代理，还能组网：穿透 + 虚拟局域网</h2>
+      <p class="section-desc">内网 client 主动连出（可穿 NAT），公网用户访问 server 分配端口即可触达内网服务；多机 vnet 还能组成虚拟局域网互通互访。</p>
     </div>
     <div class="pf-grid">
       <div class="card pf-card">
@@ -233,6 +244,13 @@ tunnel_proxy pfclient --server server:7000 --password mykey --group web --target
         <p>隧道跑在 KCP 或 QUIC 上：弱网抗丢包、更低握手延迟，与 frp 的 kcp/quic 传输语义一致。</p>
         <pre><code>tunnel_proxy pfserver --password mykey --pool 7001-7010 --transport kcp
 tunnel_proxy pfclient --server server:7000 --password mykey --transport kcp</code></pre>
+      </div>
+      <div class="card pf-card">
+        <h3>🕸️ 虚拟组网 VNet</h3>
+        <p>pfserver 开 <code>--virtual-net</code>，多台机器各跑 <code>vnet</code>（TUN 网卡 + 虚拟 IP）组成虚拟局域网，client 经虚拟 IP 三层互通（ping / TCP / UDP），访问其它机器及 server 侧内网资产。</p>
+        <pre><code>tunnel_proxy pfserver --password mykey --pool 7001-7010 --virtual-net
+sudo tunnel_proxy vnet --server server:7000 --password mykey --virtual-ip 10.99.0.2
+# 另一台：--virtual-ip 10.99.0.3；ping 10.99.0.3 互通</code></pre>
       </div>
       <div class="card pf-card pf-card-highlight">
         <h3>🚀 全协议 Handler 复用</h3>
@@ -361,7 +379,7 @@ cargo build --release
 # 质量门禁（CI 强制）
 cargo clippy --all-targets    # 0 warning
 cargo fmt --check             # 0 diff
-cargo test -p tunnel-proxy-core --lib   # 292 passed</code></pre>
+cargo test -p tunnel-proxy-core --lib   # 293 passed</code></pre>
       <div class="install-links">
         <a class="btn btn-primary" href="https://gost.run/" target="_blank" rel="noopener">查看文档</a>
         <a class="btn btn-ghost" href="../docs/test-report-2026-08-29.md">全功能测试报告</a>
@@ -379,7 +397,7 @@ cargo test -p tunnel-proxy-core --lib   # 292 passed</code></pre>
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 292 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 304 单元测试全绿</p>
   </div>
 </footer>
 

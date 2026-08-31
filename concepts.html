@@ -130,8 +130,12 @@ services:
     <h3 id="router-observer">Observer 观测</h3>
     <p>路由事件（connect/close/route/error）记录指标，可经 Webhook POST 到外部，或由 RouterApiServer 暴露 <code>/metrics</code>（Prometheus）+ <code>/status</code>（JSON）+ Web UI。</p>
 
-    <h2 id="pf-concept">7. 反向穿透 pf</h2>
-    <p>pf（port-forward）是本项目提供的内网穿透能力：内网 client 主动连公网 server，把公网端口映射到内网服务。核心概念：</p>
+    <h2 id="pf-concept">7. 反向穿透 pf 与虚拟组网 VNet（双向服务）</h2>
+    <p>pf（port-forward）是本项目提供的内网穿透能力：内网 client 主动连公网 server，把公网端口映射到内网服务。它同时构成<strong>双向服务</strong>的两半：</p>
+    <ul>
+      <li><strong>穿透方向（外→内）</strong>：公网端口 → 内网未公网 NAT 的服务。内网端口对公网保持不可直连，client 从任意位置访问 server 公网端口即触达内网。</li>
+      <li><strong>组网方向（内↔内）</strong>：<code>pfserver --virtual-net</code> + 多机 <code>vnet</code>（TUN + 虚拟 IP）组成虚拟局域网，client 经虚拟 IP 直接访问其它 client 及其内网资产（小型广域网）。</li>
+    </ul>
     <table>
       <tr><th>术语</th><th>说明</th></tr>
       <tr><td>隧道</td><td>client↔server 的加密长连接（SS2 + mux 复用，支持 7 种承载）</td></tr>
@@ -141,6 +145,7 @@ services:
       <tr><td>负载均衡组</td><td>同组多 client 共享端口，RR 分发</td></tr>
       <tr><td>STCP/XTCP</td><td>不暴露公网端口 / P2P 打洞直连</td></tr>
       <tr><td>SSH Gateway</td><td>接受标准 <code>ssh -R</code> 反向隧道</td></tr>
+      <tr><td>VNet 虚拟组网</td><td>多机 TUN 网卡 + 虚拟 IP 三层互通（ping/TCP/UDP），数据经 server 按虚拟 IP 路由</td></tr>
     </table>
 
     <h2 id="flow">8. 数据流全景</h2>
@@ -167,7 +172,7 @@ services:
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 292 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 304 单元测试全绿</p>
   </div>
 </footer>
 
