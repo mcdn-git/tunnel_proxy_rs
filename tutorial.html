@@ -177,12 +177,18 @@ tunnel_proxy pfclient --server server:7000 --password mykey --mode client --port
 tunnel_proxy pfclient --server server:7000 --password mykey --xtcp-server xt1 \
   --xtcp-secret key1 --target 127.0.0.1:80
 # （可选）指定 STUN 服务器：--stun-server stun.xxx.com:3478
-# 访问端（内网）：本地监听 9000，UDP 打洞失败自动回退中转
+# 目标端有 NAT 端口映射时，可直接指定 TCP 直连地址（bind@public 分离）：
+#   bind=0.0.0.0:16666（本机绑定，云 NAT 53030→16666），public=120.220.73.189:53030（对外公布）
+tunnel_proxy pfclient --server server:7000 --password mykey --xtcp-server xt1 \
+  --xtcp-secret key1 --target 127.0.0.1:80 --xtcp-punch "0.0.0.0:16666@120.220.73.189:53030"
+# 访问端（内网）：本地监听 9000，UDP 打洞 / TCP 直连失败自动回退中转
 tunnel_proxy pfclient --server server:7000 --password mykey --xtcp-server xt1 \
   --xtcp-secret key1 --xtcp-listen 127.0.0.1:9000</code></pre>
     <div class="hint">打洞流程：目标端候选地址（local + STUN 公网映射）经 frps 交换 → 访问端
     UDP 打洞 → KCP 可靠流 + AES-256-GCM 加密数据面。全锥形/受限锥形 NAT 可穿透；
-    <b>对称 NAT / CGNAT 无法穿透时自动回退中继</b>。→ 详见 <a class="inline" href="#pf">8. 反向穿透 pf</a></div>
+    <b>对称 NAT / CGNAT 无法穿透时自动回退中继</b>。指定 <code>--xtcp-punch "bind@public"</code>
+    时优先 TCP 直连（绑定本地端口、公布 NAT 映射公网端口），数据不经服务器中转（严格 P2P）。
+    → 详见 <a class="inline" href="#pf">8. 反向穿透 pf</a></div>
 
     <h3 id="scenario-stcp">场景 J · 不暴露公网端口的点对点访问（STCP）</h3>
     <p>远程访问家里电脑的 SSH/数据库，但不想把端口暴露到公网：</p>
