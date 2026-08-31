@@ -83,7 +83,7 @@ curl -x http://127.0.0.1:8080 https://example.com
     <p>目标 client 用 <code>--stcp-server svc1 --stcp-secret key1 --target 127.0.0.1:80</code> 注册（不占公网端口）；访问方 client 用 <code>--stcp-server svc1 --stcp-secret key1 --stcp-listen 127.0.0.1:9000</code> 本地监听，连接经 server 按密钥匹配中转。</p>
 
     <h3>Q：P2P 直连（XTCP）怎么用？</h3>
-    <p>目标注册 <code>--xtcp-server xt1 --xtcp-secret key1 --xtcp-punch &lt;打洞地址&gt; --target 127.0.0.1:80</code>；访问方 <code>--xtcp-server xt1 --xtcp-secret key1 --xtcp-listen 127.0.0.1:9000</code>。访问方先直连打洞地址（1.5s 超时），失败自动 fallback 经 server 中转。真实 NAT 环境下打洞地址需预测（frp 标准做法）。</p>
+    <p>目标注册 <code>--xtcp-server xt1 --xtcp-secret key1 --target 127.0.0.1:80</code>（自动 UDP 打洞，KCP 加密数据面）；访问方 <code>--xtcp-server xt1 --xtcp-secret key1 --xtcp-listen 127.0.0.1:9000</code>。访问方依次尝试 UDP 打洞 → TCP 直连 → fallback 经 server 中转。目标端有 NAT 端口映射时用 <code>--xtcp-punch "0.0.0.0:16666@120.220.73.189:53030"</code>（bind@public 分离：绑内网端口、公布公网映射端口）→ 访问方直接连公布地址，数据不经 server 中转（严格 P2P）。</p>
 
     <h3>Q：用标准 SSH 客户端做反向隧道？</h3>
     <p>pfserver 加 <code>--ssh-gateway 0.0.0.0:2222 --ssh-gateway-user u --ssh-gateway-pass p</code>，然后内网机器执行 <code>ssh -R 7000:127.0.0.1:80 u@server</code>，公网 7000 即转发到该机 80。</p>

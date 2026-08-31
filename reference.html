@@ -182,8 +182,8 @@
       <tr><td><code>--stcp-server/--stcp-secret/--stcp-listen</code></td><td>STCP visitor（本地监听）</td></tr>
       <tr><td><code>--stcp-server/--stcp-secret/--target</code></td><td>STCP 服务端（不占公网端口）</td></tr>
       <tr><td><code>--xtcp-server/--xtcp-secret/--xtcp-listen</code></td><td>XTCP visitor（UDP 打洞 + fallback）</td></tr>
-      <tr><td><code>--xtcp-server/--xtcp-secret/--target</code></td><td>XTCP 服务端（自动 UDP 打洞，KCP 加密数据面）</td></tr>
-      <tr><td><code>--xtcp-punch</code></td><td>XTCP 服务端 TCP 直连兼容地址（可选）</td></tr>
+      <tr><td><code>--xtcp-server/--xtcp-secret/--target</code></td><td>XTCP 服务端（自动 UDP 打洞，KCP 加密数据面；候选经 frps 交换）</td></tr>
+      <tr><td><code>--xtcp-punch "bind@public"</code></td><td>XTCP 服务端 TCP 直连：bind = 本机绑定端口，public = 对外公布 NAT 映射端口；指定时优先 TCP 直连，数据不经 server 中转（严格 P2P）</td></tr>
       <tr><td><code>--stun-server</code></td><td>XTCP UDP 打洞 STUN 服务器（可重复；默认公共 STUN）</td></tr>
       <tr><td><code>pfrelay -l :7001 [-k key]</code></td><td>加密中继中枢（DERP-like，按 ID 转发加密包，DP02）</td></tr>
       <tr><td><code>token-gen / token-parse / token-resolve</code></td><td>连接令牌生成/解析/校验（DP03）</td></tr>
