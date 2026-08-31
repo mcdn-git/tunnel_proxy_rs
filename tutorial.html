@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>使用教程 — tunnel_proxy_rs</title>
-<meta name="description" content="tunnel_proxy_rs 完整使用教程：架构概念、18 种代理协议、20 种传输、链式代理、Router 编排、端口转发、反向穿透 pf 全部场景、性能测试、WireGuard 与常见问题。">
+<meta name="description" content="tunnel_proxy_rs 完整使用教程：架构概念、18 种代理协议、20+ 种传输（含 ICMP QUIC-over-ICMP）、链式代理、Router 编排、端口转发、反向穿透 pf 全部场景、性能测试、WireGuard 与常见问题。">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -42,6 +42,7 @@
     <a class="toc-sub" href="#scenario-socks-expose">H 公网端口做代理入口</a>
     <a class="toc-sub" href="#scenario-p2p">I P2P 直连</a>
     <a class="toc-sub" href="#scenario-stcp">J 不暴露端口访问</a>
+    <a class="toc-sub" href="#scenario-icmp">L 只放行 ICMP 的网络逃生</a>
     <a class="toc-grp" href="#install">1. 安装与构建</a>
     <a class="toc-sub" href="#install-env">环境要求</a>
     <a class="toc-sub" href="#install-build">构建</a>
@@ -58,6 +59,7 @@
     <a class="toc-sub" href="#proxy-http3">HTTP3 / WebTransport</a>
     <a class="toc-sub" href="#proxy-obfs">混淆传输</a>
     <a class="toc-grp" href="#transport">4. 传输层</a>
+    <a class="toc-sub" href="#transport-icmp">ICMP 传输（QUIC-over-ICMP）</a>
     <a class="toc-grp" href="#chain">5. 链式代理</a>
     <a class="toc-sub" href="#chain-node">节点字段</a>
     <a class="toc-sub" href="#chain-hops">多 hop 分组</a>
@@ -207,6 +209,16 @@ tunnel_proxy tc --token tp... --target 127.0.0.1:80
 # 公网用户访问 http://server:&lt;分配端口&gt; 即到达内网 80</code></pre>
     <div class="hint">中继只转发 pf 已加密的字节流（SS2 + mux），<b>中继不可解密</b>；公共/自建中继均可。
     对称 NAT/CGNAT 下 XTCP 打洞失败也会自动回退经中继。→ 详见 <a class="inline" href="#pf">8. 反向穿透 pf</a></div>
+
+    <h3 id="scenario-icmp">场景 L · 只放行 ICMP 的网络里建隧道（QUIC-over-ICMP）</h3>
+    <p>网络层封锁、只允许 ICMP 时，把 QUIC 数据报封装进 ICMP Echo 报文逃生（对应 gost <code>icmp://</code>）。需 root/管理员权限：</p>
+<pre><code># ① 服务器（root，Linux/macOS 或 Windows 管理员）：监听 ICMP，转发到固定目标
+sudo tunnel_proxy icmp -l 0.0.0.0 -t 127.0.0.1:80
+# ② 客户端（root）：stdio → ICMP → 服务器 → 内网 80
+echo "GET / HTTP/1.0\r\n\r\n" | sudo tunnel_proxy icmpclient -s server --id 7
+# ③ --id 0 为随机 ID（多客户端区分用固定 ID）</code></pre>
+    <div class="hint">可靠性由 QUIC 重传保证，ICMP 报文本身允许丢失；客户端 ID 对齐 gost
+    <code>icmp://server:ID</code> 语义。→ 详见 <a class="inline" href="#transport-icmp">4.1 ICMP 传输</a></div>
 
     <!-- ========== 1 安装 ========== -->
     <h2 id="install">1. 安装与构建</h2>
@@ -386,6 +398,7 @@ tunnel_proxy ftcp   -l 0.0.0.0:1085</code></pre>
       <tr><td><code>mtls</code> / <code>mtlsclient</code></td><td>mTLS</td><td>双向证书认证，最高安全性</td></tr>
       <tr><td><code>kcp</code> / <code>kcpclient</code></td><td>KCP</td><td>UDP 可靠流，支持 FEC 前向纠错</td></tr>
       <tr><td><code>dtls</code> / <code>dtlsclient</code></td><td>DTLS</td><td>UDP 上的 TLS（PSK 认证）</td></tr>
+      <tr><td><code>icmp</code> / <code>icmpclient</code></td><td>ICMP</td><td>QUIC-over-ICMP 隧道，需 root/管理员</td></tr>
       <tr><td><code>h2</code> / <code>h2client</code></td><td>HTTP/2 隧道</td><td>TCP 转发经 h2 CONNECT</td></tr>
       <tr><td><code>h3</code> / <code>h3client</code></td><td>HTTP/3 隧道</td><td>QUIC 上的 TCP 转发</td></tr>
       <tr><td><code>wt</code> / <code>wtclient</code></td><td>WebTransport</td><td>HTTP/3 双向流隧道</td></tr>
@@ -401,6 +414,17 @@ tunnel_proxy dtls -l 0.0.0.0:29901 -t 127.0.0.1:80 -p psk123
 # mux 复用
 tunnel_proxy mtcp -l 0.0.0.0:9006
 tunnel_proxy mux -l 0.0.0.0:9005 -t 127.0.0.1:80</code></pre>
+    <h3 id="transport-icmp">ICMP 传输（QUIC-over-ICMP）</h3>
+    <p>把 QUIC 数据报封装进 ICMP Echo 报文：客户端发 Echo Request（identifier = 客户端 ID，
+    0 则随机），服务器回 Echo Reply（flags=ACK，seq = 该客户端最新请求 seq）；可靠性由 QUIC
+    重传 / 乱序重组保证，ICMP 报文本身允许丢失。适合网络层只放行 ICMP 的受限网络
+    （对应 gost <code>icmp://</code>）。需 root / 管理员权限（raw socket）。</p>
+    <pre><code># 服务器（root）：监听 ICMP，把收到的数据转发到固定目标
+sudo tunnel_proxy icmp -l 0.0.0.0 -t 127.0.0.1:80
+# 客户端（root）：stdio → ICMP 流 → 服务器 → 内网 80
+echo hello | sudo tunnel_proxy icmpclient -s server --id 7</code></pre>
+    <div class="hint">实测（2026-08-31）：WSL 与远程云服务器真实 raw socket 端到端 2/2 PASS，
+    详见 <a class="inline" href="../docs/test-report-2026-08-31.md">test-report-2026-08-31.md</a>。</div>
 
     <!-- ========== 5 链 ========== -->
     <h2 id="chain">5. 链式代理</h2>
@@ -699,7 +723,7 @@ echo "hello" | tunnel_proxy wgclient -s 127.0.0.1:29500 -k &lt;客户端私钥&g
 
     <!-- ========== 12 质量 ========== -->
     <h2 id="quality">12. 质量与文档</h2>
-    <p>质量门禁（CI 强制）：clippy 0 warning、fmt 0 diff、254 单元测试全绿、e2e 脚本实测。</p>
+    <p>质量门禁（CI 强制）：clippy 0 warning、fmt 0 diff、292 单元测试全绿、e2e 脚本实测。</p>
     <pre><code>cargo clippy --all-targets
 cargo fmt --check
 cargo test -p tunnel-proxy-core --lib</code></pre>
@@ -707,6 +731,7 @@ cargo test -p tunnel-proxy-core --lib</code></pre>
     <ul>
       <li><a href="../docs/test-report-2026-08-29.md" class="inline">test-report-2026-08-29.md</a> — 全功能测试报告（远程 NAT 实测）</li>
       <li><a href="../docs/test-report-2026-08-30.md" class="inline">test-report-2026-08-30.md</a> — 生产级深度审计加固报告</li>
+      <li><a href="../docs/test-report-2026-08-31.md" class="inline">test-report-2026-08-31.md</a> — 生产级完善轮（并发/协议/安全修复 + ICMP e2e 实测）</li>
       <li><a href="compare.html" class="inline">compare.html</a> — gost/frp 能力覆盖矩阵</li>
       <li><a href="../docs/README.md" class="inline">docs/README.md</a> — 快速开始</li>
       <li><a href="../docs/protocols.md" class="inline">docs/protocols.md</a> — 协议与传输详解（含反向穿透）</li>
@@ -723,7 +748,7 @@ cargo test -p tunnel-proxy-core --lib</code></pre>
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 254 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 292 单元测试全绿</p>
   </div>
 </footer>
 

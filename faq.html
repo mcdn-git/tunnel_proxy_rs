@@ -105,6 +105,9 @@ curl -x http://127.0.0.1:8080 https://example.com
     <h3>Q：pf 隧道支持哪些承载？</h3>
     <p>tcp / kcp / quic / tls / mtls / ws / wss 七种（<code>--transport</code>）。tls/mtls 隧道流量加密，ws/wss 为 WebSocket 承载；mtls 服务端用 <code>--tls-client-ca</code> 要求客户端证书。</p>
 
+    <h3>Q：ICMP 传输需要什么权限？怎么用？</h3>
+    <p><code>icmp</code> / <code>icmpclient</code>（QUIC-over-ICMP，对应 gost <code>icmp://</code>）需要 raw socket：Linux/macOS 需 root，Windows 需管理员。适合网络层只放行 ICMP 的受限网络；可靠性由 QUIC 重传保证，ICMP 报文本身允许丢失。示例见<a class="inline" href="tutorial.html#scenario-icmp">教程场景 L</a>。</p>
+
     <h2 id="tun">6. TUN 透明代理</h2>
     <h3>Q：tun 命令启动失败？</h3>
     <p>需要管理员/root 权限 + 虚拟网卡驱动：Linux <code>/dev/net/tun</code>、macOS 系统扩展、Windows Wintun。非 Linux 的 redirect/redu 透明代理自动回退 TUN 实现，同样需要上述前置。</p>
@@ -165,7 +168,7 @@ tunnel_proxy kcp ... --dead-link 30
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 254 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 292 单元测试全绿</p>
   </div>
 </footer>
 

@@ -81,7 +81,7 @@ cargo build --release
     <p>提交前仓库在 <code>.github/workflows/ci.yml</code> 对三平台矩阵强制执行以下门禁：</p>
 <pre><code>cargo fmt --check           # 0 diff
 cargo clippy --workspace --all-targets -- -D warnings   # 0 warning
-cargo test --workspace      # 全量测试全绿（当前 254 个）
+cargo test --workspace      # 全量测试全绿（当前 292 个）
 cargo build --release       # 产物构建</code></pre>
     <p>另有独立 security-scan job（ubuntu）：<code>cargo audit</code>（RustSec 漏洞库）+
     <code>cargo deny check</code>（advisories/licenses/bans/sources）+ gitleaks（密钥泄漏）。</p>
@@ -150,7 +150,7 @@ tunnel_proxy bench ping -s 127.0.0.1:1080 -e 127.0.0.1:9000   # 终端 2：经�
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 254 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 292 单元测试全绿</p>
   </div>
 </footer>
 
