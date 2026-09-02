@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>使用教程 — tunnel_proxy_rs</title>
-<meta name="description" content="tunnel_proxy_rs 完整使用教程：架构概念、18 种代理协议、20+ 种传输（含 ICMP QUIC-over-ICMP）、链式代理、Router 编排、端口转发、反向穿透 pf 全部场景、性能测试、WireGuard 与常见问题。">
+<meta name="description" content="tunnel_proxy_rs 完整使用教程：架构概念、代理协议、23 种传输通道（含 ICMP QUIC-over-ICMP）、链式代理、Router 编排、端口转发、反向穿透 pf 全部场景、性能测试、WireGuard 与常见问题。">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -42,9 +42,12 @@
     <a class="toc-sub" href="#scenario-socks-expose">H 公网端口做代理入口</a>
     <a class="toc-sub" href="#scenario-p2p">I P2P 直连</a>
     <a class="toc-sub" href="#scenario-stcp">J 不暴露端口访问</a>
+    <a class="toc-sub" href="#scenario-relay">K 中继寻址 + 令牌一键建隧道</a>
     <a class="toc-sub" href="#scenario-icmp">L 只放行 ICMP 的网络逃生</a>
     <a class="toc-sub" href="#scenario-vnet">M 多机虚拟局域网（VNet）</a>
     <a class="toc-sub" href="#scenario-connect">N 访问未公网 NAT 的 server 端口</a>
+    <a class="toc-sub" href="#scenario-vnet2-federation">O 多 NAT 联邦组网（VNet v2）</a>
+    <a class="toc-sub" href="#sdwan-traditional">P 传统 SD-WAN（规范逻辑地址）</a>
     <a class="toc-grp" href="#install">1. 安装与构建</a>
     <a class="toc-sub" href="#install-env">环境要求</a>
     <a class="toc-sub" href="#install-build">构建</a>
@@ -260,6 +263,104 @@ mysql -h server -P 7001 -u root -p</code></pre>
     <div class="hint">server 所在网络完全无需给内网端口做 NAT 映射——穿透隧道的出口在内网 client
     侧，内网端口对公网保持不可直连。→ 详见 <a class="inline" href="#pf-tcp">8.2 TCP 端口映射</a></div>
 
+    <h3 id="scenario-vnet2-federation">场景 O · 多 NAT 服务器联邦组网（VNet v2，私有广域网 + 自定义网络）</h3>
+    <p>两台（或多台）NAT 云服务器各自创建 <code>pfserver</code>，互相联邦（<code>--vnet2-peer</code>），
+    本地 WSL / Windows 作为 client 连不同 server，四节点组成一张跨域虚拟广域网。
+    节点可用<strong>任意段数、段值超 255 的逻辑地址</strong>（如 <code>266.266.266.266.2</code>），
+    数据面走合法 TUN IPv4；配合 <code>.tprs</code> 自定义后缀 hosts 映射，即可用域名
+    <code>curl http://266.266.266.266.2.tprs:5000/</code> 访问任意节点——实验 16 条互访路径全通。</p>
+<pre><code># ① 服务器 A：网络 net1 = 10.99.0.0/24，联邦 peer = 服务器 B
+tunnel_proxy pfserver --listen 0.0.0.0:18888 --password mykey --pool 7001-7010 \
+  --vnet2-net net1:10.99.0.0/24 \
+  --vnet2-peer SERVER_B_PUBLIC:42770@net1 &
+# 服务器 A 本机注册为节点（逻辑地址可超 255，如 266.266.266.266.2）
+tunnel_proxy vnet2 --server 127.0.0.1:18888 --password mykey --net net1 \
+  --vaddr 266.266.266.266.2 --tun-ip 10.99.0.2 --mtu 1400 --name tpvnetA &
+# 服务器 A 业务（如 flask 监听 TUN IP:5000）
+
+# ② 服务器 B：网络 net1 = 10.100.0.0/24（同网络名、不同 CIDR，避免池重叠），联邦 peer = 服务器 A
+tunnel_proxy pfserver --listen 0.0.0.0:18888 --password mykey --pool 7001-7010 \
+  --vnet2-net net1:10.100.0.0/24 \
+  --vnet2-peer SERVER_A_PUBLIC:55471@net1 &
+tunnel_proxy vnet2 --server 127.0.0.1:18888 --password mykey --net net1 \
+  --vaddr 266.266.266.211.2655.2 --tun-ip 10.100.0.2 --mtu 1400 --name tpvnetB &
+
+# ③ 本地 client：WSL 连服务器 A、Windows 连服务器 B，注册到同一网络 net1
+sudo tunnel_proxy vnet2 --server SERVER_A_PUBLIC:55471 --password mykey --net net1 \
+  --vaddr 266.266.266.265.1 --tun-ip 10.99.0.5 --mtu 1400 --name tpvnetW &
+tunnel_proxy vnet2 --server SERVER_B_PUBLIC:42770 --password mykey --net net1 \
+  --vaddr 266.266.266.266.1 --tun-ip 10.100.0.5 --mtu 1400 --name tpvnetW &
+
+# ④ hosts 加 .tprs 映射（每台机器），然后任意出口 curl：
+#    10.99.0.2  266.266.266.266.2.tprs     10.100.0.2  266.266.266.211.2655.2.tprs
+#    10.99.0.5  266.266.266.265.1.tprs     10.100.0.5  266.266.266.266.1.tprs
+curl http://266.266.266.266.2.tprs:5000/   # 访问服务器 A 节点</code></pre>
+    <div class="hint">同网络名 + 不同 CIDR 是联邦组网关键；server 需 <code>--pool</code>（random 模式必需）。
+    坑：<code>vnet2 --hosts /etc/hosts</code> 会覆盖整个 hosts（节点表写独立文件，.tprs 单独追加）；
+    Windows 需 wintun 0.14.1+（0.11 缺导出）+ 管理员权限。→ 详见
+    <a class="inline" href="../../docs/vnet2-federation-experiment.md">docs/vnet2-federation-experiment.md</a></div>
+
+    <h3 id="sdwan-traditional">场景 P · 传统 SD-WAN（规范逻辑地址，VNet v1 + vnet2）</h3>
+    <p>用<strong>规范私有 IPv4</strong>（<code>10.x</code> / <code>172.16.x</code> / <code>192.168.x</code>）
+    作为逻辑地址，把多台机器打通成一张企业级虚拟广域网（SD-WAN）：不关心底层公网/NAT，
+    只关心 Overlay 上的一层标准三层地址，各分支站点经隧道互通。</p>
+    <p>两个版本都能用规范逻辑地址，按场景选：</p>
+    <ul>
+      <li><strong>VNet v1（<code>vnet</code>）</strong>：规范虚拟 IP（默认 <code>10.99.0.0/16</code>），
+      单网络中心辐射，配置最简，适合中小规模分支互联；</li>
+      <li><strong>VNet v2（<code>vnet2</code>）</strong>：<code>--vaddr</code> 支持规范 IP，
+      多网络广域网，<code>--vnet2-peer</code> 联邦跨域，适合多区域大型 SD-WAN。</li>
+    </ul>
+    <h4 id="sdwan-v1">P.1 VNet v1：规范虚拟 IP 中心辐射</h4>
+    <p>server <code>--virtual-net</code> 组织一个虚拟网段，各机 <code>vnet --virtual-ip</code>
+    注册规范虚拟 IP（如 <code>10.99.0.2</code> / <code>10.99.0.3</code>），同网段三层互通。</p>
+<pre><code># ① 公网 server：开启虚拟网络注册表
+tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey \
+  --pool 7001-7010 --virtual-net &
+
+# ② 分支 A：注册 10.99.0.2
+sudo tunnel_proxy vnet --server server.example.com:7000 --password mykey \
+  --virtual-ip 10.99.0.2 &
+
+# ③ 分支 B：注册 10.99.0.3
+sudo tunnel_proxy vnet --server server.example.com:7000 --password mykey \
+  --virtual-ip 10.99.0.3 &
+
+# ④ 任意分支 ping / 访问另一分支
+ping 10.99.0.3
+curl http://10.99.0.3:8080/</code></pre>
+    <div class="hint">v1 是严格模式：目标必须在虚拟网段内才转发（<code>in_vnet</code> 判定），
+    适合单网段中心辐射；要把多个不同网段拼成大网，用 P.2 的 vnet2 联邦。</div>
+    <h4 id="sdwan-v2">P.2 VNet v2：规范逻辑地址 + 联邦跨域</h4>
+    <p>各区域一台 <code>pfserver</code>，<code>--vnet2-net 名称:CIDR</code> 定义本区域网段，
+    区域间 <code>--vnet2-peer 对端:端口@网络名</code> 互相联邦；client 用
+    <code>vnet2 --vaddr 规范IP</code> 接入所在网络。</p>
+<pre><code># ① 华东 server：网段 10.20.0.0/24，联邦华南
+tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010 \
+  --vnet2-net ec:10.20.0.0/24 \
+  --vnet2-peer server-c:7000@sc &
+
+# ② 华南 server：网段 10.30.0.0/24，联邦华东
+tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010 \
+  --vnet2-net sc:10.30.0.0/24 \
+  --vnet2-peer server-b:7000@ec &
+
+# ③ 华东分支 client：规范逻辑地址 10.20.0.2
+sudo tunnel_proxy vnet2 --server server-b:7000 --password mykey \
+  --net ec --vaddr 10.20.0.2 &
+
+# ④ 华南分支 client：规范逻辑地址 10.30.0.2
+sudo tunnel_proxy vnet2 --server server-c:7000 --password mykey \
+  --net sc --vaddr 10.30.0.2 &
+
+# ⑤ 跨区域互通（华东 ping 华南）
+ping 10.30.0.2
+curl http://10.30.0.2:5000/</code></pre>
+    <div class="hint"><code>--vaddr</code> 接受任意点分十进制，传规范 IP 完全合法；数据面走
+    server 从网络池分配的 TUN IPv4。联邦需双向 <code>--vnet2-peer</code>，server 需
+    <code>--pool</code>；Windows 需 wintun 0.14.1+ + 管理员权限。→ 完整文档
+    <a class="inline" href="../../docs/sdwan-tutorial.md">docs/sdwan-tutorial.md</a></div>
+
     <!-- ========== 1 安装 ========== -->
     <h2 id="install">1. 安装与构建</h2>
     <h3 id="install-env">环境要求</h3>
@@ -303,7 +404,7 @@ tunnel_proxy --help   # 查看全部子命令</code></pre>
 
     <!-- ========== 3 正向代理 ========== -->
     <h2 id="proxy">3. 正向代理入口</h2>
-    <p>18 种协议作为独立服务启动。客户端把代理地址指向这些端口即可。</p>
+    <p>代理协议作为独立服务启动（HTTP / HTTPS / HTTP/2 / HTTP/3 / Auto / SOCKS4a / SOCKS5 / SS / SS2 / SSR / SSU / SNI / Relay / Trojan / Vmess / Vless / File 等）。客户端把代理地址指向这些端口即可。</p>
 
     <h3 id="proxy-socks">SOCKS4 / SOCKS5 / Auto</h3>
     <p><b>SOCKS5</b> 是最通用的代理协议，几乎所有工具都支持。tunnel_proxy_rs 的 SOCKS5 支持用户名密码认证与多用户。</p>
@@ -787,7 +888,7 @@ echo "hello" | tunnel_proxy wgclient -s 127.0.0.1:29500 -k &lt;客户端私钥&g
 
     <!-- ========== 12 质量 ========== -->
     <h2 id="quality">12. 质量与文档</h2>
-    <p>质量门禁（CI 强制）：clippy 0 warning、fmt 0 diff、304 单元测试全绿、e2e 脚本实测。</p>
+    <p>质量门禁（CI 强制）：clippy 0 warning、fmt 0 diff、325 单元测试全绿、e2e 脚本实测。</p>
     <pre><code>cargo clippy --all-targets
 cargo fmt --check
 cargo test -p tunnel-proxy-core --lib</code></pre>
@@ -812,7 +913,7 @@ cargo test -p tunnel-proxy-core --lib</code></pre>
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 虚拟组网 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 304 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 325 单元测试全绿</p>
   </div>
 </footer>
 

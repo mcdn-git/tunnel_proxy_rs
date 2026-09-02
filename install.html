@@ -64,7 +64,7 @@ cargo --version</code></pre>
     <p>部分依赖需要 C 编译器（ring / boringtun 的 C 部分、Windows Wintun 驱动的 FFI）：</p>
     <table>
       <tr><th>平台</th><th>要求</th><th>安装示例</th></tr>
-      <tr><td>Linux</td><td>gcc / clang + libc 头文件</td><td><code>apt install build-essential libudev-dev pkg-config protobuf-compiler cmake nasm</code></td></tr>
+      <tr><td>Linux</td><td>gcc / clang + libc 头文件</td><td><code>apt install build-essential libudev-dev pkg-config</code></td></tr>
       <tr><td>macOS</td><td>Xcode Command Line Tools</td><td><code>xcode-select --install</code></td></tr>
       <tr><td>Windows</td><td>MSVC 生成工具</td><td>安装 Visual Studio Build Tools，勾选「使用 C++ 的桌面开发」</td></tr>
     </table>
@@ -81,7 +81,7 @@ cargo build --release
     <p>提交前仓库在 <code>.github/workflows/ci.yml</code> 对三平台矩阵强制执行以下门禁：</p>
 <pre><code>cargo fmt --check           # 0 diff
 cargo clippy --workspace --all-targets -- -D warnings   # 0 warning
-cargo test --workspace      # 全量测试全绿（当前 304 个）
+cargo test --workspace      # 全量测试全绿（当前 325 个）
 cargo build --release       # 产物构建</code></pre>
     <p>另有独立 security-scan job（ubuntu）：<code>cargo audit</code>（RustSec 漏洞库）+
     <code>cargo deny check</code>（advisories/licenses/bans/sources）+ gitleaks（密钥泄漏）。</p>
@@ -150,7 +150,7 @@ tunnel_proxy bench ping -s 127.0.0.1:1080 -e 127.0.0.1:9000   # 终端 2：经�
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 虚拟组网 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 304 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 325 单元测试全绿</p>
   </div>
 </footer>
 

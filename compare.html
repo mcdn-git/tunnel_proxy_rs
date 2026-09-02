@@ -48,8 +48,8 @@
     <h2 id="summary">1. 总览</h2>
     <table>
       <tr><th>维度</th><th>tunnel_proxy_rs</th><th>gost</th><th>frp</th></tr>
-      <tr><td>正向代理协议</td><td>18 种 ✅</td><td>同量级</td><td>—</td></tr>
-      <tr><td>传输层</td><td>20+ 种 ✅</td><td>同量级</td><td>tcp/kcp/quic/ws/tls</td></tr>
+      <tr><td>正向代理协议</td><td>HTTP/HTTPS/H2/H3/Auto/SOCKS4a/5/SS/SS2/SSR/SSU/SNI/Relay/Trojan/Vmess/Vless/File ✅</td><td>同量级</td><td>—</td></tr>
+      <tr><td>传输层</td><td>23 种（core `Transport` 枚举）✅</td><td>同量级</td><td>tcp/kcp/quic/ws/tls</td></tr>
       <tr><td>链式代理 / 分流</td><td>Chain + Router ✅</td><td>✅</td><td>—</td></tr>
       <tr><td>内网穿透 pf</td><td>⭐ 全功能</td><td>—</td><td>同量级</td></tr>
       <tr><td>单进程多服务</td><td>⭐ ✅</td><td>需多进程</td><td>—</td></tr>
@@ -99,7 +99,7 @@
       <tr><td>XTCP（P2P 打洞）</td><td>✅⚠️</td><td>直连 + fallback；NAT 预测需真实验证</td></tr>
       <tr><td>SSH Tunnel Gateway</td><td>✅</td><td><code>ssh -R</code> 反向隧道</td></tr>
       <tr><td>TCPMUX</td><td>✅</td><td>CONNECT 目标路由</td></tr>
-      <tr><td>传输承载（tcp/kcp/quic/ws/tls/mtls）</td><td>✅</td><td>—</td></tr>
+      <tr><td>传输承载（tcp/kcp/quic/tls/mtls/ws/wss/relay）</td><td>✅</td><td>—</td></tr>
       <tr><td>OIDC 认证</td><td>✅</td><td>HS256 本地校验</td></tr>
       <tr><td>带宽限速（bandwidthLimit）</td><td>✅</td><td>每连接</td></tr>
       <tr><td>端口范围映射（remotePort）</td><td>✅</td><td>—</td></tr>
@@ -166,7 +166,7 @@
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 虚拟组网 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 304 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 325 单元测试全绿</p>
   </div>
 </footer>
 

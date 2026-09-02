@@ -76,10 +76,10 @@
       </div>
     </div>
     <div class="hero-stats">
-      <div class="stat"><b data-count="18">0</b><span>代理协议</span></div>
-      <div class="stat"><b data-count="20">0</b><span>传输层</span></div>
+      <div class="stat"><b data-count="17">0</b><span>代理协议</span></div>
+      <div class="stat"><b data-count="23">0</b><span>传输层</span></div>
       <div class="stat"><b data-count="17">0</b><span>编排组件</span></div>
-      <div class="stat"><b data-count="304">0</b><span>单元测试全绿</span></div>
+      <div class="stat"><b data-count="325">0</b><span>单元测试全绿</span></div>
       <div class="stat"><b data-count="3">0</b><span>平台可用</span></div>
     </div>
   </div>
@@ -96,13 +96,13 @@
     <div class="feature-grid">
       <div class="card feature-card">
         <div class="card-icon">🧩</div>
-        <h3>18 种代理协议</h3>
-        <p>HTTP / HTTPS / HTTP/2 / HTTP/3 / Auto 自动协商 / SOCKS4a / SOCKS5 / SS / SS2 / SSR（含 auth_sha1_v4 协议插件）/ SSU / SNI / Relay / Trojan / Vmess / Vless / mtcp / Virtual。</p>
+        <h3>代理协议</h3>
+        <p>HTTP / HTTPS / HTTP/2 / HTTP/3 / Auto 自动协商 / SOCKS4a / SOCKS5 / SS / SS2 / SSR（含 auth_sha1_v4 协议插件）/ SSU / SNI / Relay / Trojan / Vmess / Vless / File 等。</p>
       </div>
       <div class="card feature-card">
         <div class="card-icon">🚇</div>
-        <h3>20 种传输通道</h3>
-        <p>TCP / TLS / WS / H2 / gRPC / QUIC / KCP（含 FEC 纠错）/ DTLS / SSH / obfs4 / ohttp·otls / pht / ftcp / icmp / WebTransport / utls 指纹 / WireGuard 等。</p>
+        <h3>23 种传输通道</h3>
+        <p>TCP / TLS / WS / WSS / H2 / gRPC / QUIC / KCP（含 FEC 纠错）/ DTLS / SSH / obfs4 / ohttp·otls / pht / ftcp / icmp / WebTransport / utls 指纹 / Unix / mux(MTCP·MTLS·MWS·MWSS) / UDP / WireGuard 等。</p>
       </div>
       <div class="card feature-card">
         <div class="card-icon">🧭</div>
@@ -138,7 +138,7 @@
   <div class="container">
     <div class="section-head">
       <p class="eyebrow">协议入口</p>
-      <h2 class="section-title">十八种代理协议，统一 Handler 抽象</h2>
+      <h2 class="section-title">代理协议统一 Handler 抽象</h2>
       <p class="section-desc">每个入口协议都可作为独立服务、链节点、或反向穿透的数据流处理端——同样的协议逻辑处处复用。</p>
     </div>
     <div class="badge-cloud">
@@ -158,8 +158,7 @@
       <span class="badge">Trojan</span>
       <span class="badge">Vmess</span>
       <span class="badge">Vless</span>
-      <span class="badge">mtcp<span class="badge-sub">mux 复用</span></span>
-      <span class="badge">Virtual</span>
+      <span class="badge">File<span class="badge-sub">HTTP 文件服务</span></span>
     </div>
     <div class="proto-note card">
       <h3>特殊协议同样覆盖</h3>
@@ -173,7 +172,7 @@
   <div class="container">
     <div class="section-head">
       <p class="eyebrow">传输层</p>
-      <h2 class="section-title">二十种底层通道，可任意组合</h2>
+      <h2 class="section-title">底层通道可任意组合</h2>
       <p class="section-desc">传输层与协议层正交：同一协议可跑在 TCP、TLS、WS、QUIC、KCP 任意通道之上。</p>
     </div>
     <div class="badge-cloud">
@@ -270,7 +269,7 @@ tunnel_proxy pfclient --server server:7000 --password mykey \
     <div class="section-head">
       <p class="eyebrow">使用教程</p>
       <h2 class="section-title">从零到内网穿透，四步上手</h2>
-      <p class="section-desc">十八种协议、二十种传输、端口转发与反向穿透全场景的完整手册见：</p>
+      <p class="section-desc">代理协议、传输通道、端口转发与反向穿透全场景的完整手册见：</p>
       <div style="margin-top: 22px;">
         <a class="btn btn-primary" href="tutorial.html">打开完整教程</a>
       </div>
@@ -397,7 +396,7 @@ cargo test -p tunnel-proxy-core --lib   # 293 passed</code></pre>
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 虚拟组网 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 304 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 325 单元测试全绿</p>
   </div>
 </footer>
 

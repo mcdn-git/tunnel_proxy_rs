@@ -119,7 +119,7 @@ curl -x http://127.0.0.1:8080 https://example.com
     <p>确认 server 与 client 的 <code>--transport</code> 一致；UDP 端口未被防火墙拦截。KCP 在 UDP 上跑可靠流，弱网/丢包链路更稳，可开 FEC（<code>--data-shards/--parity-shards</code>）。</p>
 
     <h3>Q：pf 隧道支持哪些承载？</h3>
-    <p>tcp / kcp / quic / tls / mtls / ws / wss 七种（<code>--transport</code>）。tls/mtls 隧道流量加密，ws/wss 为 WebSocket 承载；mtls 服务端用 <code>--tls-client-ca</code> 要求客户端证书。</p>
+    <p>tcp / kcp / quic / tls / mtls / ws / wss / relay 八种（<code>--transport</code>）。tls/mtls 隧道流量加密，ws/wss 为 WebSocket 承载，relay 经加密中继中枢按 ID 转发（DP02）；mtls 服务端用 <code>--tls-client-ca</code> 要求客户端证书。</p>
 
     <h3>Q：ICMP 传输需要什么权限？怎么用？</h3>
     <p><code>icmp</code> / <code>icmpclient</code>（QUIC-over-ICMP，对应 gost <code>icmp://</code>）需要 raw socket：Linux/macOS 需 root，Windows 需管理员。适合网络层只放行 ICMP 的受限网络；可靠性由 QUIC 重传保证，ICMP 报文本身允许丢失。示例见<a class="inline" href="tutorial.html#scenario-icmp">教程场景 L</a>。</p>
@@ -184,7 +184,7 @@ tunnel_proxy kcp ... --dead-link 30
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 虚拟组网 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 304 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 325 单元测试全绿</p>
   </div>
 </footer>
 

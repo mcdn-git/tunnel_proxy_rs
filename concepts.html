@@ -138,7 +138,7 @@ services:
     </ul>
     <table>
       <tr><th>术语</th><th>说明</th></tr>
-      <tr><td>隧道</td><td>client↔server 的加密长连接（SS2 + mux 复用，支持 7 种承载）</td></tr>
+      <tr><td>隧道</td><td>client↔server 的加密长连接（SS2 + mux 复用，支持 8 种承载：tcp/kcp/quic/tls/mtls/ws/wss/relay）</td></tr>
       <tr><td>端口分配</td><td>random / fixed / client 三模式</td></tr>
       <tr><td>数据流</td><td>每条公网连接 = 一条 mux 流，经隧道转发到内网</td></tr>
       <tr><td>虚拟主机 vhost</td><td>多域名共享端口，按 Host/SNI/:authority 路由</td></tr>
@@ -172,7 +172,7 @@ services:
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 虚拟组网 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 304 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 325 单元测试全绿</p>
   </div>
 </footer>
 

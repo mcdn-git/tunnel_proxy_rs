@@ -70,7 +70,7 @@
       <tr><td><code>h3socks</code></td><td>HTTP/3 SOCKS 入口</td><td><code>-l</code></td></tr>
       <tr><td><code>wtsocks</code></td><td>WebTransport SOCKS 入口</td><td><code>-l</code></td></tr>
       <tr><td><code>chain</code></td><td>链式代理入口</td><td><code>-l</code> <code>-f/--file</code></td></tr>
-      <tr><td><code>run</code></td><td>Router 编排（多服务 + 分流）</td><td><code>-l</code> <code>-C/--config</code> <code>--api</code> <code>--reload</code> <code>--netns</code></td></tr>
+      <tr><td><code>run</code></td><td>Router 编排（多服务 + 分流）</td><td><code>-l</code> <code>-C/--config</code> <code>--api</code> <code>--reload</code> <code>--netns</code> <code>--api-user/--api-pass</code></td></tr>
     </table>
 
     <h2 id="handlers">2. Handlers（协议处理）</h2>
@@ -153,7 +153,9 @@
       <tr><td><code>--mark</code></td><td>—</td><td>socket 标记（Linux）</td></tr>
       <tr><td><code>--ssh-gateway/--ssh-gateway-user/--ssh-gateway-pass</code></td><td>—</td><td>SSH 反向隧道网关</td></tr>
       <tr><td><code>--http-plugin</code></td><td>—</td><td>注册事件 HTTP 回调</td></tr>
-      <tr><td><code>--virtual-net</code></td><td>关</td><td>虚拟网络注册表</td></tr>
+      <tr><td><code>--virtual-net</code></td><td>关</td><td>虚拟网络注册表（V1）</td></tr>
+      <tr><td><code>--vnet2-net 名称:CIDR</code></td><td>—</td><td>VNet v2 广域网虚拟化：定义网络及独立 TUN IP 池（可重复，如 <code>net1:10.99.0.0/24</code>）</td></tr>
+      <tr><td><code>--vnet2-peer peer@网络名</code></td><td>—</td><td>VNet v2 联邦 peer：本 server 以 pfclient 身份连接 peer server，互为超级节点通告路由实现跨域互通（可重复，如 <code>10.0.0.2:7000@net1</code>）</td></tr>
       <tr><td><code>--server-read-timeout</code></td><td><code>90</code></td><td>服务端控制流读超时（秒），client 静默掉线时回收死会话</td></tr>
       <tr><td><code>--parse-timeout</code></td><td><code>15</code></td><td>vhost/tcpmux/SNI 头解析超时（秒），防慢速连接</td></tr>
       <tr><td><code>--udp-response-timeout</code></td><td><code>5</code></td><td>UDP 响应等待超时（秒）</td></tr>
@@ -228,6 +230,25 @@
     <p>server 需 <code>pfserver --virtual-net</code>；虚拟 IP 冲突返回 <code>reg-err</code>。
     数据经 pf mux 隧道由 server 按虚拟 IP 路由转发（V1 中转；P2P 直连为后续）。</p>
 
+    <h3 id="pf-vnet2">vnet2（VNet v2 广域网虚拟化客户端）</h3>
+    <p>VNet v2 采用非规范逻辑地址 overlay + 联邦跨域路由。本机创建 TUN 网卡接入
+    <code>pfserver --vnet2-net</code> 定义的网络，以逻辑地址（可选，如
+    <code>266.266.266.266</code>）与其他 vnet2 client 互通；多个 server 通过
+    <code>--vnet2-peer</code> 联邦后跨域可达。</p>
+    <table>
+      <tr><th>参数</th><th>默认</th><th>说明</th></tr>
+      <tr><td><code>--server</code></td><td>必填</td><td>pfserver 地址</td></tr>
+      <tr><td><code>--password</code></td><td>必填</td><td>共享密钥（与 server 一致）</td></tr>
+      <tr><td><code>--net</code></td><td>必填</td><td>网络名（server <code>--vnet2-net</code> 定义）</td></tr>
+      <tr><td><code>--vaddr</code></td><td>server 分配</td><td>逻辑地址（可选，如 <code>266.266.266.266</code>）</td></tr>
+      <tr><td><code>--tun-ip</code></td><td>server 分配</td><td>TUN 承载 IP（可选）</td></tr>
+      <tr><td><code>--mtu</code></td><td><code>1400</code></td><td>TUN MTU</td></tr>
+      <tr><td><code>--name</code></td><td><code>tpvnet2</code></td><td>TUN 网卡名</td></tr>
+      <tr><td><code>--transport</code></td><td><code>tcp</code></td><td>pf 承载（tcp/kcp/quic/tls/mtls/ws/wss/relay）</td></tr>
+      <tr><td><code>--heartbeat-interval</code></td><td><code>30</code></td><td>心跳间隔（秒）</td></tr>
+      <tr><td><code>--heartbeat-timeout</code></td><td><code>5</code></td><td>心跳应答超时（秒）</td></tr>
+    </table>
+
     <h2 id="tooling">6. 工具与服务</h2>
     <table>
       <tr><th>子命令</th><th>功能</th><th>关键参数</th></tr>
@@ -242,7 +263,7 @@
       <tr><td><code>tun</code></td><td>TUN 透明代理</td><td><code>--address</code> <code>-f</code></td></tr>
       <tr><td><code>tun2socks</code></td><td>TUN 流量全走 SOCKS</td><td><code>--address</code> <code>-x socks5://</code></td></tr>
       <tr><td><code>dns</code></td><td>DNS 代理</td><td><code>-l</code></td></tr>
-      <tr><td><code>serial</code></td><td>串口三方向转发</td><td><code>--device</code> <code>--baud</code></td></tr>
+      <tr><td><code>serial</code></td><td>串口三方向转发</td><td><code>-p</code> <code>-t</code> <code>-l</code> <code>-b</code></td></tr>
       <tr><td><code>wg-keygen</code></td><td>WireGuard 密钥生成</td><td>—</td></tr>
       <tr><td><code>tunnel</code> / <code>unix</code></td><td>简易 TCP/Unix 隧道</td><td><code>-l</code> <code>-t</code></td></tr>
     </table>
@@ -263,10 +284,9 @@ bypass:                # 旁路直连
   - 127.0.0.0/8
   - "*.internal"
 reverse: false
-limit:                 # 限流
-  max_connections: 1000
-  token: 1000000
-  hourly_bytes: 50000000
+max_conn: 1000          # 并发连接上限（0 = 不限）
+rate: 0                 # 每连接速率限制（字节/秒，0 = 不限）
+traffic: 0              # 每连接总流量上限（字节，0 = 不限）
 services:              # 单进程多服务
   - name: socks
     addr: 0.0.0.0:1080
@@ -277,7 +297,8 @@ webhook:               # observer 事件回调
   timeout_secs: 5</code></pre>
 
     <h2 id="api">8. API 与指标</h2>
-    <p>RouterApiServer（<code>run --api 127.0.0.1:18085</code>）暴露：</p>
+    <p>RouterApiServer（<code>run --api 127.0.0.1:18085</code>）暴露；以
+    <code>--api-user/--api-pass</code> 启动可对 API 加 BasicAuth 保护：</p>
     <table>
       <tr><th>端点</th><th>方法</th><th>说明</th></tr>
       <tr><td><code>/</code>、<code>/ui</code></td><td>GET</td><td>内嵌 Web 仪表盘（HTML）</td></tr>
@@ -300,7 +321,7 @@ webhook:               # observer 事件回调
       <p class="footer-brand">▣ tunnel_proxy_rs</p>
       <p class="footer-desc">高性能 Rust 代理内核 · 协议齐全 · 内网穿透 · 虚拟组网 · 三平台一致</p>
     </div>
-    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 304 单元测试全绿</p>
+    <p class="footer-meta">质量门禁：clippy 0 warning · fmt 0 diff · 325 单元测试全绿</p>
   </div>
 </footer>
 
