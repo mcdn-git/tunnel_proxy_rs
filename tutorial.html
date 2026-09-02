@@ -335,30 +335,32 @@ curl http://10.99.0.3:8080/</code></pre>
     <p>各区域一台 <code>pfserver</code>，<code>--vnet2-net 名称:CIDR</code> 定义本区域网段，
     区域间 <code>--vnet2-peer 对端:端口@网络名</code> 互相联邦；client 用
     <code>vnet2 --vaddr 规范IP</code> 接入所在网络。</p>
-<pre><code># ① 华东 server：网段 10.20.0.0/24，联邦华南
+<pre><code># ① 华东 server：网段 10.20.0.0/24，联邦华南（同一网络名 corp）
 tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010 \
-  --vnet2-net ec:10.20.0.0/24 \
-  --vnet2-peer server-c:7000@sc &
+  --vnet2-net corp:10.20.0.0/24 \
+  --vnet2-peer server-c:7000@corp &
 
 # ② 华南 server：网段 10.30.0.0/24，联邦华东
 tunnel_proxy pfserver --listen 0.0.0.0:7000 --password mykey --pool 7001-7010 \
-  --vnet2-net sc:10.30.0.0/24 \
-  --vnet2-peer server-b:7000@ec &
+  --vnet2-net corp:10.30.0.0/24 \
+  --vnet2-peer server-b:7000@corp &
 
 # ③ 华东分支 client：规范逻辑地址 10.20.0.2
 sudo tunnel_proxy vnet2 --server server-b:7000 --password mykey \
-  --net ec --vaddr 10.20.0.2 &
+  --net corp --vaddr 10.20.0.2 --tun-ip 10.20.0.2 &
 
 # ④ 华南分支 client：规范逻辑地址 10.30.0.2
 sudo tunnel_proxy vnet2 --server server-c:7000 --password mykey \
-  --net sc --vaddr 10.30.0.2 &
+  --net corp --vaddr 10.30.0.2 --tun-ip 10.30.0.2 &
 
-# ⑤ 跨区域互通（华东 ping 华南）
+# ⑤ 跨区域互通（华东 ping 华南，用对端 TUN IP）
 ping 10.30.0.2
 curl http://10.30.0.2:5000/</code></pre>
-    <div class="hint"><code>--vaddr</code> 接受任意点分十进制，传规范 IP 完全合法；数据面走
-    server 从网络池分配的 TUN IPv4。联邦需双向 <code>--vnet2-peer</code>，server 需
-    <code>--pool</code>；Windows 需 wintun 0.14.1+ + 管理员权限。→ 完整文档
+    <div class="hint">联邦两端 server <b>必须用同一网络名</b>（上例统一 <code>corp</code>），
+    仅 CIDR 不同；否则对端因「网络不存在」拒绝联邦注册。<code>--vaddr</code> 接受任意点分
+    十进制，传规范 IP 完全合法；<code>--tun-ip</code> 为数据面承载 IP，可省略由 server 从
+    本域池分配。联邦需双向 <code>--vnet2-peer</code>，server 需 <code>--pool</code>；
+    Windows 需 wintun 0.14.1+ + 管理员权限。→ 完整文档
     <a class="inline" href="../../docs/sdwan-tutorial.md">docs/sdwan-tutorial.md</a></div>
 
     <!-- ========== 1 安装 ========== -->
